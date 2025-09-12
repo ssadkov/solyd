@@ -9,6 +9,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
+import { WalletConnect } from "@/components/wallet-connect"
 import {
   Sidebar,
   SidebarContent,
@@ -51,12 +52,9 @@ export function DefiSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) 
       </SidebarHeader>
       
       <SidebarContent>
-        {/* Wallet Button */}
+        {/* Wallet Connect Component */}
         <div className="p-4">
-          <Button className="w-full" size="lg">
-            <IconWallet className="w-4 h-4 mr-2" />
-            Connect Wallet
-          </Button>
+          <WalletConnect />
         </div>
 
         <Separator />
