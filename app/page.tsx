@@ -5,6 +5,7 @@ import { DefiCards } from "@/components/defi-cards"
 import HelpPanel from "@/components/layout/HelpPanel"
 import MobileLayout from "@/components/mobile-layout"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { useAggregatorData } from "@/hooks/use-aggregator-data"
 import {
   SidebarInset,
   SidebarProvider,
@@ -12,6 +13,7 @@ import {
 
 export default function Home() {
   const isMobile = useIsMobile()
+  const { data: aggregatorData, isLoading, error } = useAggregatorData()
 
   // Show loading state while determining device type
   if (isMobile === undefined) {
@@ -56,7 +58,7 @@ export default function Home() {
                 </div>
                 
                 {/* DeFi Cards */}
-                <DefiCards />
+                <DefiCards data={aggregatorData} isLoading={isLoading} />
                 
                 {/* Earning Opportunities Grid */}
                 <div className="px-4 lg:px-6">

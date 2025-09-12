@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { DefiCards } from '@/components/defi-cards'
+import { useAggregatorData } from '@/hooks/use-aggregator-data'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
@@ -24,6 +25,7 @@ const walletAssets = [
 export default function MobileLayout() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'wallet'>('dashboard')
   const [isHelpOpen, setIsHelpOpen] = useState(false)
+  const { data: aggregatorData, isLoading } = useAggregatorData()
 
   const DashboardContent = () => (
     <div className="flex-1 p-4 overflow-y-auto">
@@ -35,7 +37,7 @@ export default function MobileLayout() {
       </div>
 
       {/* DeFi Cards */}
-      <DefiCards />
+      <DefiCards data={aggregatorData} isLoading={isLoading} />
 
       {/* Earning Opportunities */}
       <div className="mt-6">
