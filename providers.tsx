@@ -13,10 +13,6 @@ export default function Providers({ children }: { children: React.ReactNode }) {
           solana: {
             createOnLogin: 'users-without-wallets'
           }
-        },
-        // Configure Solana network
-        solana: {
-          networks: ['mainnet']
         }
       }}
     >
