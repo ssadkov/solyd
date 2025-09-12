@@ -3,7 +3,7 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
-import { HelpCircle, MessageCircle, BookOpen, ExternalLink } from 'lucide-react'
+import { HelpCircle, BookOpen } from 'lucide-react'
 
 export default function HelpPanel() {
   const helpSections = [
@@ -18,17 +18,6 @@ export default function HelpPanel() {
         'Security best practices'
       ]
     },
-    {
-      title: 'Protocols',
-      description: 'Supported DeFi protocols',
-      icon: ExternalLink,
-      items: [
-        'Raydium - Liquidity pools',
-        'Marinade - SOL staking',
-        'Orca - Yield farming',
-        'Solend - Lending platform'
-      ]
-    }
   ]
 
   return (
@@ -94,26 +83,6 @@ export default function HelpPanel() {
           </CardContent>
         </Card>
 
-        {/* Chat Section - Placeholder */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <MessageCircle className="w-4 h-4 text-primary" />
-              <CardTitle className="text-base">Community Chat</CardTitle>
-            </div>
-            <CardDescription>Get help from the community</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="text-center py-4">
-              <p className="text-sm text-muted-foreground mb-4">
-                Chat integration coming soon
-              </p>
-              <Button variant="outline" size="sm" disabled>
-                Join Discord
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
       </div>
 
       {/* Footer */}

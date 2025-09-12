@@ -60,13 +60,6 @@ export default function Home() {
                         protocol: 'Orca',
                         status: 'coming_soon'
                       },
-                      {
-                        title: 'Lending',
-                        description: 'Lend assets to earn interest',
-                        apy: '6.8%',
-                        protocol: 'Solend',
-                        status: 'active'
-                      }
                     ].map((opportunity, index) => (
                       <div key={index} className="bg-card border rounded-lg p-6 hover:shadow-lg transition-shadow">
                         <div className="flex items-center justify-between mb-4">
