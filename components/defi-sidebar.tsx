@@ -43,7 +43,7 @@ export function DefiSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) 
             >
               <a href="#">
                 <IconCoins className="!size-5" />
-                <span className="text-base font-semibold">Solyd</span>
+                <span className="text-3xl font-bold text-primary">Solyd</span>
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -89,8 +89,11 @@ export function DefiSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) 
       
       <SidebarFooter>
         <div className="p-4 text-center">
+          <p className="text-sm font-semibold text-primary mb-1">
+            SolYd
+          </p>
           <p className="text-xs text-muted-foreground">
-            Solyd
+            solid yield farming on solana
           </p>
         </div>
       </SidebarFooter>

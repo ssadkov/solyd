@@ -29,9 +29,9 @@ export default function MobileLayout() {
 
   const DashboardContent = () => (
     <div className="flex-1 p-4 overflow-y-auto">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold mb-2">Earning Opportunities</h1>
-        <p className="text-muted-foreground text-sm">
+      <div className="mb-6 text-center">
+        <h1 className="text-5xl font-bold mb-2 text-primary">Solyd</h1>
+        <p className="text-muted-foreground text-base">
           Discover and participate in various DeFi protocols on Solana
         </p>
       </div>
