@@ -1,12 +1,36 @@
+'use client'
+
 import { DefiSidebar } from "@/components/defi-sidebar"
 import { DefiCards } from "@/components/defi-cards"
 import HelpPanel from "@/components/layout/HelpPanel"
+import MobileLayout from "@/components/mobile-layout"
+import { useIsMobile } from "@/hooks/use-mobile"
 import {
   SidebarInset,
   SidebarProvider,
 } from "@/components/ui/sidebar"
 
 export default function Home() {
+  const isMobile = useIsMobile()
+
+  // Show loading state while determining device type
+  if (isMobile === undefined) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-background">
+        <div className="text-center">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Mobile layout
+  if (isMobile) {
+    return <MobileLayout />
+  }
+
+  // Desktop layout
   return (
     <SidebarProvider
       style={
