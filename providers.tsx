@@ -9,9 +9,14 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       config={{
         // Create embedded wallets for users who don't have a wallet
         embeddedWallets: {
+          createOnLogin: 'users-without-wallets',
           solana: {
             createOnLogin: 'users-without-wallets'
           }
+        },
+        // Configure Solana network
+        solana: {
+          networks: ['mainnet']
         }
       }}
     >

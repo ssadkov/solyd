@@ -1,6 +1,6 @@
 'use client';
 
-import { usePrivy, useWallets } from '@privy-io/react-auth';
+import { usePrivy, useWallets, useSolanaWallets } from '@privy-io/react-auth';
 import { Button } from './ui/button';
 import { Card } from './ui/card';
 import { Badge } from './ui/badge';
@@ -10,6 +10,7 @@ import { useState } from 'react';
 export function WalletConnect() {
   const { ready, authenticated, login, logout, connectWallet } = usePrivy();
   const { wallets } = useWallets();
+  const { wallets: solanaWallets } = useSolanaWallets();
   const [copied, setCopied] = useState(false);
 
   if (!ready) {
@@ -50,9 +51,11 @@ export function WalletConnect() {
     );
   }
 
-  const primaryWallet = wallets[0];
+  // Prioritize Solana wallets over regular wallets
+  const primaryWallet = solanaWallets[0] || wallets[0];
   const address = primaryWallet?.address;
   const truncatedAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '';
+  const isSolanaWallet = solanaWallets.length > 0;
 
   const copyAddress = async () => {
     if (address) {
@@ -85,7 +88,7 @@ export function WalletConnect() {
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">Address:</span>
               <Badge variant="secondary" className="text-xs">
-                {primaryWallet?.walletClientType || 'Solana'}
+                {isSolanaWallet ? 'Solana' : 'EVM'}
               </Badge>
             </div>
             <div className="flex items-center space-x-2">
