@@ -17,6 +17,7 @@ interface SendAssetModalProps {
     value: string;
     mint: string;
     logo?: string;
+    decimals?: number;
   };
   walletId: string;
   isOpen: boolean;
@@ -32,7 +33,6 @@ export function SendAssetModal({ asset, walletId, isOpen, onClose }: SendAssetMo
     state,
     sendTransaction,
     resetTransaction,
-    validateSponsorship,
     getExplorerUrl,
   } = useTransactionSender();
 
@@ -42,12 +42,8 @@ export function SendAssetModal({ asset, walletId, isOpen, onClose }: SendAssetMo
       // Basic Solana address validation
       const isValid = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(recipient);
       setIsValidAddress(isValid);
-      
-      if (isValid && amount) {
-        validateSponsorship(walletId, parseFloat(amount), asset.mint);
-      }
     }
-  }, [recipient, amount, walletId, asset.mint, validateSponsorship]);
+  }, [recipient]);
 
   // Reset form when modal closes
   useEffect(() => {
@@ -69,10 +65,13 @@ export function SendAssetModal({ asset, walletId, isOpen, onClose }: SendAssetMo
       return;
     }
 
-    if (!state.canSponsor) {
-      alert(`Cannot send transaction: ${state.sponsorshipReason}`);
+    // Check if amount is valid
+    if (parseFloat(amount) <= 0) {
+      alert('Please enter a valid amount');
       return;
     }
+
+    // Sponsorship removed - using standard wallet transactions
 
     try {
       const response = await sendTransaction({
@@ -80,7 +79,7 @@ export function SendAssetModal({ asset, walletId, isOpen, onClose }: SendAssetMo
         recipient,
         amount: parseFloat(amount),
         mint: asset.mint === 'So11111111111111111111111111111111111111112' ? undefined : asset.mint,
-        decimals: 9, // Default decimals, should be dynamic
+        decimals: asset.decimals || 9, // Use actual token decimals or default to 9
       });
 
       if (response.success && response.transactionHash) {
@@ -112,11 +111,6 @@ export function SendAssetModal({ asset, walletId, isOpen, onClose }: SendAssetMo
           <DialogTitle className="flex items-center gap-2">
             <Send className="h-5 w-5" />
             Send {asset.symbol}
-            {state.sponsored && (
-              <Badge variant="secondary" className="ml-2">
-                Gasless
-              </Badge>
-            )}
           </DialogTitle>
         </DialogHeader>
         
@@ -168,17 +162,7 @@ export function SendAssetModal({ asset, walletId, isOpen, onClose }: SendAssetMo
             </Card>
           )}
 
-          {/* Sponsorship Status */}
-          {recipient && amount && !state.canSponsor && (
-            <Card className="p-3 bg-yellow-50 border-yellow-200">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="h-5 w-5 text-yellow-600" />
-                <div className="text-sm text-yellow-800">
-                  Cannot sponsor: {state.sponsorshipReason}
-                </div>
-              </div>
-            </Card>
-          )}
+          {/* Sponsorship removed - using standard wallet transactions */}
 
           {/* Asset Info */}
           <Card className="p-3">
@@ -196,11 +180,7 @@ export function SendAssetModal({ asset, walletId, isOpen, onClose }: SendAssetMo
                   Balance: {asset.balance}
                 </div>
               </div>
-              {state.sponsored && (
-                <Badge variant="outline" className="text-xs">
-                  Sponsored
-                </Badge>
-              )}
+              {/* Sponsorship removed */}
             </div>
           </Card>
 
@@ -263,8 +243,7 @@ export function SendAssetModal({ asset, walletId, isOpen, onClose }: SendAssetMo
                   state.isSending || 
                   !recipient || 
                   !amount || 
-                  !isValidAddress || 
-                  !state.canSponsor
+                  !isValidAddress
                 }
               >
                 {state.isSending ? (

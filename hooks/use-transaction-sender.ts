@@ -1,16 +1,16 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { PrivyTransactionService, PrivyTransactionRequest, PrivyTransactionResponse } from '@/services/privy-transaction.service';
+import { useWallet } from '@solana/wallet-adapter-react';
+import { Connection, PublicKey, Transaction, SystemProgram, LAMPORTS_PER_SOL } from '@solana/web3.js';
+import { getAssociatedTokenAddress, createTransferInstruction, TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { SOLANA_CONFIG } from '@/lib/solana-config';
 
 // Types
 export interface TransactionState {
   isSending: boolean;
   transactionHash: string | null;
   error: string | null;
-  sponsored: boolean;
-  canSponsor: boolean;
-  sponsorshipReason?: string;
   message?: string;
 }
 
@@ -19,9 +19,17 @@ export interface UseTransactionSenderReturn {
   state: TransactionState;
   
   // Actions
-  sendTransaction: (request: Omit<PrivyTransactionRequest, 'walletId'> & { walletId: string }) => Promise<PrivyTransactionResponse>;
+  sendTransaction: (request: {
+    recipient: string;
+    amount: number;
+    mint?: string;
+    decimals?: number;
+  }) => Promise<{
+    success: boolean;
+    transactionHash?: string;
+    error?: string;
+  }>;
   resetTransaction: () => void;
-  validateSponsorship: (walletId: string, amount: number, mint?: string) => Promise<void>;
   
   // Utils
   getExplorerUrl: (hash: string) => string;
@@ -29,13 +37,12 @@ export interface UseTransactionSenderReturn {
 }
 
 export function useTransactionSender(): UseTransactionSenderReturn {
+  const { publicKey, sendTransaction } = useWallet();
+  
   const [state, setState] = useState<TransactionState>({
     isSending: false,
     transactionHash: null,
     error: null,
-    sponsored: false,
-    canSponsor: true,
-    sponsorshipReason: undefined,
   });
 
   // Reset transaction state
@@ -44,32 +51,43 @@ export function useTransactionSender(): UseTransactionSenderReturn {
       isSending: false,
       transactionHash: null,
       error: null,
-      sponsored: false,
-      canSponsor: true,
-      sponsorshipReason: undefined,
     });
   }, []);
 
-  // Validate if transaction can be sponsored
-  const validateSponsorship = useCallback(async (walletId: string, amount: number, mint?: string) => {
-    try {
-      const result = await PrivyTransactionService.canSponsorTransaction(walletId, amount, mint);
-      setState(prev => ({
-        ...prev,
-        canSponsor: result.canSponsor,
-        sponsorshipReason: result.reason,
-      }));
-    } catch (error) {
-      setState(prev => ({
-        ...prev,
-        canSponsor: false,
-        sponsorshipReason: error instanceof Error ? error.message : 'Unknown error',
-      }));
-    }
-  }, []);
-
   // Send transaction
-  const sendTransaction = useCallback(async (request: Omit<PrivyTransactionRequest, 'walletId'> & { walletId: string }): Promise<PrivyTransactionResponse> => {
+  const sendTransactionHandler = useCallback(async (request: {
+    recipient: string;
+    amount: number;
+    mint?: string;
+    decimals?: number;
+  }): Promise<{
+    success: boolean;
+    transactionHash?: string;
+    error?: string;
+  }> => {
+    if (!publicKey) {
+      return {
+        success: false,
+        error: 'Wallet not connected'
+      };
+    }
+
+    // Check wallet balance for SOL (needed for transaction fees)
+    const connection = new Connection(SOLANA_CONFIG.rpcUrl, SOLANA_CONFIG.commitment);
+    try {
+      const balance = await connection.getBalance(publicKey);
+      const minBalance = 5000; // Minimum 0.000005 SOL for transaction fees
+      
+      if (balance < minBalance) {
+        return {
+          success: false,
+          error: `Insufficient SOL for transaction fees. Need at least 0.000005 SOL, have ${balance / LAMPORTS_PER_SOL} SOL`
+        };
+      }
+    } catch (error) {
+      console.warn('Could not check wallet balance:', error);
+    }
+
     setState(prev => ({
       ...prev,
       isSending: true,
@@ -78,42 +96,105 @@ export function useTransactionSender(): UseTransactionSenderReturn {
     }));
 
     try {
-      // First validate sponsorship
-      const sponsorshipResult = await PrivyTransactionService.canSponsorTransaction(
-        request.walletId,
-        request.amount,
-        request.mint
-      );
+      const connection = new Connection(SOLANA_CONFIG.rpcUrl, SOLANA_CONFIG.commitment);
+      const fromPublicKey = publicKey;
+      const toPublicKey = new PublicKey(request.recipient);
 
-      if (!sponsorshipResult.canSponsor) {
-        const error = `Cannot sponsor transaction: ${sponsorshipResult.reason}`;
-        setState(prev => ({
-          ...prev,
-          isSending: false,
-          error,
-          canSponsor: false,
-          sponsorshipReason: sponsorshipResult.reason,
-        }));
-        return {
-          success: false,
-          error,
-          sponsored: false,
-        };
+      let transaction: Transaction;
+
+      if (request.mint) { // SPL Token transfer
+        // Check token balance
+        const mintPublicKey = new PublicKey(request.mint);
+        const senderTokenAccount = await getAssociatedTokenAddress(mintPublicKey, fromPublicKey);
+        
+        console.log('Token transfer details:', {
+          mint: request.mint,
+          amount: request.amount,
+          decimals: request.decimals,
+          calculatedAmount: request.amount * (10 ** (request.decimals || 9))
+        });
+        
+        try {
+          const tokenBalance = await connection.getTokenAccountBalance(senderTokenAccount);
+          const requiredAmount = request.amount * (10 ** (request.decimals || 9));
+          
+          console.log('Token balance check:', {
+            currentBalance: tokenBalance.value.amount,
+            requiredAmount: requiredAmount.toString(),
+            uiAmount: tokenBalance.value.uiAmount,
+            decimals: tokenBalance.value.decimals
+          });
+          
+          if (tokenBalance.value.amount < requiredAmount.toString()) {
+            return {
+              success: false,
+              error: `Insufficient token balance. Need ${request.amount}, have ${tokenBalance.value.uiAmount || 0}`
+            };
+          }
+        } catch (error) {
+          console.warn('Could not check token balance:', error);
+        }
+        
+        const recipientTokenAccount = await getAssociatedTokenAddress(mintPublicKey, toPublicKey);
+
+        transaction = new Transaction().add(
+          createTransferInstruction(
+            senderTokenAccount,
+            recipientTokenAccount,
+            fromPublicKey,
+            request.amount * (10 ** (request.decimals || 9)), // Convert to token units
+            [],
+            TOKEN_PROGRAM_ID
+          )
+        );
+      } else { // SOL transfer
+        // Check SOL balance for transfer
+        try {
+          const balance = await connection.getBalance(fromPublicKey);
+          const requiredAmount = request.amount * LAMPORTS_PER_SOL;
+          const feeEstimate = 5000; // Estimated fee
+          
+          if (balance < requiredAmount + feeEstimate) {
+            return {
+              success: false,
+              error: `Insufficient SOL balance. Need ${request.amount + (feeEstimate / LAMPORTS_PER_SOL)} SOL, have ${balance / LAMPORTS_PER_SOL} SOL`
+            };
+          }
+        } catch (error) {
+          console.warn('Could not check SOL balance:', error);
+        }
+        
+        transaction = new Transaction().add(
+          SystemProgram.transfer({
+            fromPubkey: fromPublicKey,
+            toPubkey: toPublicKey,
+            lamports: request.amount * LAMPORTS_PER_SOL,
+          })
+        );
       }
 
-      // Send the transaction
-      const response = await PrivyTransactionService.sendGaslessTransaction(request);
+      // Get recent blockhash
+      const { blockhash } = await connection.getLatestBlockhash();
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = fromPublicKey;
+
+      // Send transaction
+      const signature = await sendTransaction(transaction, connection);
+      
+      // Wait for confirmation
+      await connection.confirmTransaction(signature);
 
       setState(prev => ({
         ...prev,
         isSending: false,
-        transactionHash: response.transactionHash || null,
-        error: response.error || null,
-        sponsored: response.sponsored,
-        message: response.message || null,
+        transactionHash: signature,
+        message: 'Transaction sent successfully!',
       }));
 
-      return response;
+      return {
+        success: true,
+        transactionHash: signature,
+      };
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       setState(prev => ({
@@ -125,26 +206,24 @@ export function useTransactionSender(): UseTransactionSenderReturn {
       return {
         success: false,
         error: errorMessage,
-        sponsored: false,
       };
     }
-  }, []);
+  }, [publicKey, sendTransaction]);
 
   // Get transaction explorer URL
   const getExplorerUrl = useCallback((hash: string) => {
-    return PrivyTransactionService.getTransactionExplorerUrl(hash);
+    return `https://solscan.io/tx/${hash}`;
   }, []);
 
   // Get wallet explorer URL
   const getWalletExplorerUrl = useCallback((address: string) => {
-    return PrivyTransactionService.getWalletExplorerUrl(address);
+    return `https://solscan.io/account/${address}`;
   }, []);
 
   return {
     state,
-    sendTransaction,
+    sendTransaction: sendTransactionHandler,
     resetTransaction,
-    validateSponsorship,
     getExplorerUrl,
     getWalletExplorerUrl,
   };

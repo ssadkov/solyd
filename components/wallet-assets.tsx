@@ -30,7 +30,7 @@ export function WalletAssets({ address }: WalletAssetsProps) {
   };
 
   // Get wallet ID from address (for now, using address as wallet ID)
-  // In a real app, you'd get this from Privy wallet object
+  // In a real app, you'd get this from wallet adapter
   const walletId = address;
 
   const handleCloseModal = () => {
@@ -95,6 +95,7 @@ export function WalletAssets({ address }: WalletAssetsProps) {
       value: `${sol.toFixed(2)} SOL`,
       mint: 'So11111111111111111111111111111111111111112',
       logo: undefined,
+      decimals: 9, // SOL has 9 decimals
     }] : []),
     // Add tokens
     ...tokens.map(token => ({
@@ -103,6 +104,7 @@ export function WalletAssets({ address }: WalletAssetsProps) {
       value: `${token.uiAmount.toFixed(2)}`,
       mint: token.mint,
       logo: token.logo,
+      decimals: token.decimals, // Use actual token decimals
     }))
   ];
 
