@@ -43,52 +43,90 @@ export default function MobileLayout() {
       <div className="mt-6">
         <h2 className="text-lg font-semibold mb-4">Available Strategies</h2>
         <div className="space-y-4">
-          {[
-            {
-              title: 'Liquidity Mining',
-              description: 'Provide liquidity to earn rewards',
-              apy: '12.5%',
-              protocol: 'Raydium',
-              status: 'active'
-            },
-            {
-              title: 'Staking Rewards',
-              description: 'Stake SOL to earn passive income',
-              apy: '8.2%',
-              protocol: 'Marinade',
-              status: 'active'
-            },
-            {
-              title: 'Yield Farming',
-              description: 'Farm tokens with high yields',
-              apy: '25.7%',
-              protocol: 'Orca',
-              status: 'coming_soon'
-            }
-          ].map((opportunity, index) => (
-            <Card key={index} className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div>
-                  <h3 className="font-semibold">{opportunity.title}</h3>
-                  <p className="text-sm text-muted-foreground">{opportunity.protocol}</p>
+          {isLoading ? (
+            // Loading skeleton
+            [...Array(3)].map((_, index) => (
+              <Card key={index} className="p-4 animate-pulse">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 bg-muted rounded-full"></div>
+                    <div>
+                      <div className="h-4 bg-muted rounded w-20 mb-2"></div>
+                      <div className="h-3 bg-muted rounded w-16"></div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="h-5 bg-muted rounded w-12 mb-1"></div>
+                    <div className="h-3 bg-muted rounded w-8"></div>
+                  </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-xl font-bold text-green-500">{opportunity.apy}</div>
-                  <div className="text-xs text-muted-foreground">APY</div>
-                </div>
-              </div>
-              <p className="text-sm text-muted-foreground mb-3">
-                {opportunity.description}
-              </p>
-              <Button 
-                className="w-full" 
-                disabled={opportunity.status === 'coming_soon'}
-                variant={opportunity.status === 'coming_soon' ? 'outline' : 'default'}
-              >
-                {opportunity.status === 'coming_soon' ? 'Coming Soon' : 'Start Earning'}
-              </Button>
+                <div className="h-3 bg-muted rounded w-full mb-3"></div>
+                <div className="h-8 bg-muted rounded w-full"></div>
+              </Card>
+            ))
+          ) : aggregatorData.length === 0 ? (
+            <Card className="p-4 text-center">
+              <p className="text-muted-foreground">No opportunities available</p>
             </Card>
-          ))}
+          ) : (
+            aggregatorData.slice(0, 3).map((opportunity, index) => (
+              <Card key={index} className="p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
+                      {opportunity.token.logo ? (
+                        <img 
+                          src={opportunity.token.logo} 
+                          alt={opportunity.token.symbol}
+                          className="w-8 h-8 rounded-full object-cover"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none'
+                            e.currentTarget.nextElementSibling?.classList.remove('hidden')
+                          }}
+                        />
+                      ) : null}
+                      <span className={`${opportunity.token.logo ? 'hidden' : ''} text-muted-foreground`}>
+                        {opportunity.token.symbol.slice(0, 2)}
+                      </span>
+                    </div>
+                    <div>
+                      <h3 className="font-semibold">{opportunity.token.symbol} Lending</h3>
+                      <p className="text-sm text-muted-foreground">{opportunity.protocol}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-xl font-bold text-green-500">{opportunity.apy.toFixed(2)}%</div>
+                    <div className="text-xs text-muted-foreground">APY</div>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mb-3">
+                  Lend {opportunity.token.symbol} to earn {opportunity.apy.toFixed(2)}% APY
+                </p>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="text-sm">
+                    <span className="text-muted-foreground">TVL: </span>
+                    <span className="font-medium">${(opportunity.tvl / 1000000).toFixed(1)}M</span>
+                  </div>
+                  <div className="text-sm">
+                    <span className={`px-2 py-1 rounded-full text-xs ${
+                      opportunity.isActive 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-muted text-muted-foreground'
+                    }`}>
+                      {opportunity.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
+                </div>
+                <Button 
+                  className="w-full" 
+                  disabled={!opportunity.isActive}
+                  variant={!opportunity.isActive ? 'outline' : 'default'}
+                >
+                  {!opportunity.isActive ? 'Coming Soon' : 'Start Earning'}
+                </Button>
+              </Card>
+            ))
+          )}
         </div>
       </div>
     </div>
