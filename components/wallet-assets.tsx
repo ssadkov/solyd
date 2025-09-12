@@ -105,15 +105,23 @@ export function WalletAssets({ address }: WalletAssetsProps) {
           <div className="flex justify-between items-center">
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                {asset.logo && (
+                {asset.logo ? (
                   <img 
                     src={asset.logo} 
                     alt={asset.symbol}
                     className="w-4 h-4 rounded-full"
                     onError={(e) => {
+                      console.log(`Failed to load logo for ${asset.symbol}:`, asset.logo);
                       e.currentTarget.style.display = 'none';
                     }}
+                    onLoad={() => {
+                      console.log(`Successfully loaded logo for ${asset.symbol}:`, asset.logo);
+                    }}
                   />
+                ) : (
+                  <div className="w-4 h-4 rounded-full bg-gray-200 flex items-center justify-center text-xs">
+                    ?
+                  </div>
                 )}
                 <div className="font-medium">{asset.symbol}</div>
                 <Button
