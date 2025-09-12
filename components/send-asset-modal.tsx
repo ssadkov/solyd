@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card } from './ui/card';
-import { Send, X } from 'lucide-react';
+import { Badge } from './ui/badge';
+import { Send, X, ExternalLink, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { useTransactionSender } from '@/hooks/use-transaction-sender';
 
 interface SendAssetModalProps {
   asset: {
@@ -16,14 +18,45 @@ interface SendAssetModalProps {
     mint: string;
     logo?: string;
   };
+  walletId: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function SendAssetModal({ asset, isOpen, onClose }: SendAssetModalProps) {
+export function SendAssetModal({ asset, walletId, isOpen, onClose }: SendAssetModalProps) {
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isValidAddress, setIsValidAddress] = useState(true);
+  
+  const {
+    state,
+    sendTransaction,
+    resetTransaction,
+    validateSponsorship,
+    getExplorerUrl,
+  } = useTransactionSender();
+
+  // Validate recipient address
+  useEffect(() => {
+    if (recipient) {
+      // Basic Solana address validation
+      const isValid = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(recipient);
+      setIsValidAddress(isValid);
+      
+      if (isValid && amount) {
+        validateSponsorship(walletId, parseFloat(amount), asset.mint);
+      }
+    }
+  }, [recipient, amount, walletId, asset.mint, validateSponsorship]);
+
+  // Reset form when modal closes
+  useEffect(() => {
+    if (!isOpen) {
+      setRecipient('');
+      setAmount('');
+      resetTransaction();
+    }
+  }, [isOpen, resetTransaction]);
 
   const handleSend = async () => {
     if (!recipient || !amount) {
@@ -31,29 +64,34 @@ export function SendAssetModal({ asset, isOpen, onClose }: SendAssetModalProps) 
       return;
     }
 
-    setIsLoading(true);
-    
+    if (!isValidAddress) {
+      alert('Please enter a valid Solana address');
+      return;
+    }
+
+    if (!state.canSponsor) {
+      alert(`Cannot send transaction: ${state.sponsorshipReason}`);
+      return;
+    }
+
     try {
-      // TODO: Implement actual send transaction
-      console.log('Sending:', {
-        asset: asset.symbol,
-        amount,
+      const response = await sendTransaction({
+        walletId,
         recipient,
-        mint: asset.mint
+        amount: parseFloat(amount),
+        mint: asset.mint === 'So11111111111111111111111111111111111111112' ? undefined : asset.mint,
+        decimals: 9, // Default decimals, should be dynamic
       });
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      alert(`Successfully sent ${amount} ${asset.symbol} to ${recipient}`);
-      onClose();
-      setRecipient('');
-      setAmount('');
+
+      if (response.success && response.transactionHash) {
+        // Success - transaction sent with real hash
+        setTimeout(() => {
+          onClose();
+        }, 2000); // Close after 2 seconds to show success
+      }
+      // If success but no transactionHash, keep modal open to show message
     } catch (error) {
       console.error('Send failed:', error);
-      alert('Send failed. Please try again.');
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -61,17 +99,87 @@ export function SendAssetModal({ asset, isOpen, onClose }: SendAssetModalProps) 
     setAmount(asset.balance);
   };
 
+  const handleClose = () => {
+    if (!state.isSending) {
+      onClose();
+    }
+  };
+
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Send className="h-5 w-5" />
             Send {asset.symbol}
+            {state.sponsored && (
+              <Badge variant="secondary" className="ml-2">
+                Gasless
+              </Badge>
+            )}
           </DialogTitle>
         </DialogHeader>
         
         <div className="space-y-4">
+          {/* Success State */}
+                   {state.transactionHash && (
+                     <Card className="p-3 bg-green-50 border-green-200">
+                       <div className="flex items-center gap-2">
+                         <CheckCircle className="h-5 w-5 text-green-600" />
+                         <div className="flex-1">
+                           <div className="font-medium text-green-800">Transaction Sent!</div>
+                           <div className="text-sm text-green-600">
+                             Hash: {state.transactionHash.slice(0, 8)}...{state.transactionHash.slice(-8)}
+                           </div>
+                         </div>
+                         <Button
+                           variant="ghost"
+                           size="sm"
+                           onClick={() => window.open(getExplorerUrl(state.transactionHash!), '_blank')}
+                         >
+                           <ExternalLink className="h-4 w-4" />
+                         </Button>
+                       </div>
+                     </Card>
+                   )}
+
+                   {state.message && !state.transactionHash && (
+                     <Card className="p-3 bg-blue-50 border-blue-200">
+                       <div className="flex items-center gap-2">
+                         <CheckCircle className="h-5 w-5 text-blue-600" />
+                         <div className="flex-1">
+                           <div className="font-medium text-blue-800">Transaction Prepared</div>
+                           <div className="text-sm text-blue-600">{state.message}</div>
+                         </div>
+                       </div>
+                     </Card>
+                   )}
+
+          {/* Error State */}
+          {state.error && (
+            <Card className="p-3 bg-red-50 border-red-200">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-red-600" />
+                <div className="flex-1">
+                  <div className="font-medium text-red-800">Transaction Failed</div>
+                  <div className="text-sm text-red-600">{state.error}</div>
+                </div>
+              </div>
+            </Card>
+          )}
+
+          {/* Sponsorship Status */}
+          {recipient && amount && !state.canSponsor && (
+            <Card className="p-3 bg-yellow-50 border-yellow-200">
+              <div className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-yellow-600" />
+                <div className="text-sm text-yellow-800">
+                  Cannot sponsor: {state.sponsorshipReason}
+                </div>
+              </div>
+            </Card>
+          )}
+
           {/* Asset Info */}
           <Card className="p-3">
             <div className="flex items-center gap-2">
@@ -82,12 +190,17 @@ export function SendAssetModal({ asset, isOpen, onClose }: SendAssetModalProps) 
                   className="w-6 h-6 rounded-full"
                 />
               )}
-              <div>
+              <div className="flex-1">
                 <div className="font-medium">{asset.symbol}</div>
                 <div className="text-sm text-muted-foreground">
                   Balance: {asset.balance}
                 </div>
               </div>
+              {state.sponsored && (
+                <Badge variant="outline" className="text-xs">
+                  Sponsored
+                </Badge>
+              )}
             </div>
           </Card>
 
@@ -99,8 +212,12 @@ export function SendAssetModal({ asset, isOpen, onClose }: SendAssetModalProps) 
               placeholder="Enter Solana address..."
               value={recipient}
               onChange={(e) => setRecipient(e.target.value)}
-              className="font-mono text-sm"
+              className={`font-mono text-sm ${!isValidAddress && recipient ? 'border-red-500' : ''}`}
+              disabled={state.isSending}
             />
+            {!isValidAddress && recipient && (
+              <p className="text-sm text-red-500">Invalid Solana address format</p>
+            )}
           </div>
 
           {/* Amount */}
@@ -115,11 +232,13 @@ export function SendAssetModal({ asset, isOpen, onClose }: SendAssetModalProps) 
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
                 className="flex-1"
+                disabled={state.isSending}
               />
               <Button
                 variant="outline"
                 onClick={handleMaxAmount}
                 className="px-3"
+                disabled={state.isSending}
               >
                 Max
               </Button>
@@ -130,19 +249,34 @@ export function SendAssetModal({ asset, isOpen, onClose }: SendAssetModalProps) 
           <div className="flex gap-2 pt-4">
             <Button
               variant="outline"
-              onClick={onClose}
+              onClick={handleClose}
               className="flex-1"
-              disabled={isLoading}
+              disabled={state.isSending}
             >
-              Cancel
+              {(state.transactionHash || state.message) ? 'Close' : 'Cancel'}
             </Button>
-            <Button
-              onClick={handleSend}
-              className="flex-1"
-              disabled={isLoading || !recipient || !amount}
-            >
-              {isLoading ? 'Sending...' : 'Send'}
-            </Button>
+            {!state.transactionHash && !state.message && (
+              <Button
+                onClick={handleSend}
+                className="flex-1"
+                disabled={
+                  state.isSending || 
+                  !recipient || 
+                  !amount || 
+                  !isValidAddress || 
+                  !state.canSponsor
+                }
+              >
+                {state.isSending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  'Send'
+                )}
+              </Button>
+            )}
           </div>
         </div>
       </DialogContent>
