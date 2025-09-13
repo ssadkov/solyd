@@ -11,7 +11,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { WalletConnect } from "@/components/wallet-connect"
 import { WalletAssets } from "@/components/wallet-assets"
-import { useWallet } from '@solana/wallet-adapter-react'
+import { useWalletContext } from '@/contexts/wallet-context'
 import {
   Sidebar,
   SidebarContent,
@@ -28,8 +28,7 @@ const data = {
 }
 
 export function DefiSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
-  const { publicKey } = useWallet();
-  const walletAddress = publicKey?.toString();
+  const { walletAddress } = useWalletContext();
   return (
     <Sidebar collapsible="offcanvas" {...props}>
       <SidebarHeader>

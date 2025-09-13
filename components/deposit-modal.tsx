@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, TrendingUp, AlertCircle, CheckCircle } from 'lucide-react'
+import { Loader2, TrendingUp, AlertCircle, CheckCircle, Wallet } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
+import { useWalletContext } from '@/contexts/wallet-context'
 
 interface EnhancedOpportunity {
   token: {
@@ -49,12 +50,20 @@ export function DepositModal({
 }: DepositModalProps) {
   const [amount, setAmount] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { balance } = useWalletContext()
 
   if (!opportunity) return null
 
   const { userPosition } = opportunity
   const hasPosition = userPosition?.hasPosition || false
   const isFirstDeposit = !hasPosition
+
+  // Find the token balance in wallet
+  const walletTokenBalance = balance.tokens.find(token => 
+    token.mint === opportunity.token.address
+  )
+
+  const availableBalance = walletTokenBalance?.uiAmount || 0
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -74,6 +83,10 @@ export function DepositModal({
   const handleClose = () => {
     setAmount('')
     onClose()
+  }
+
+  const handleMax = () => {
+    setAmount(availableBalance.toString())
   }
 
   return (
@@ -124,17 +137,32 @@ export function DepositModal({
               </div>
             </div>
 
-            {/* Current Position */}
-            {hasPosition && userPosition && (
-              <div className="border-t pt-3 mt-3">
+            {/* Wallet Balance */}
+            <div className="border-t pt-3 mt-3">
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span className="text-muted-foreground flex items-center gap-1">
+                  <Wallet className="w-3 h-3" />
+                  Wallet Balance
+                </span>
+                <span className="font-medium text-blue-600">
+                  {balance.isLoading ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    `${availableBalance.toFixed(6)} ${opportunity.token.symbol}`
+                  )}
+                </span>
+              </div>
+              
+              {/* Current Position */}
+              {hasPosition && userPosition && (
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-muted-foreground">Your Investment</span>
                   <span className="font-medium text-green-600">
                     {formatCurrency(userPosition.investedAmount)}
                   </span>
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Error Display */}
@@ -145,25 +173,51 @@ export function DepositModal({
             </Alert>
           )}
 
+          {/* No Balance Warning */}
+          {!balance.isLoading && availableBalance <= 0 && (
+            <Alert>
+              <AlertCircle className="h-4 w-4" />
+              <AlertDescription>
+                You don't have any {opportunity.token.symbol} tokens in your wallet. 
+                Please acquire some tokens before depositing.
+              </AlertDescription>
+            </Alert>
+          )}
+
           {/* Deposit Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label htmlFor="amount">
                 Amount ({opportunity.token.symbol})
               </Label>
-              <Input
-                id="amount"
-                type="number"
-                step="any"
-                min="0"
-                placeholder="0.00"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                disabled={isLoading || isSubmitting}
-                className="text-lg"
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="amount"
+                  type="number"
+                  step="any"
+                  min="0"
+                  max={availableBalance}
+                  placeholder="0.00"
+                  value={amount}
+                  onChange={(e) => setAmount(e.target.value)}
+                  disabled={isLoading || isSubmitting || balance.isLoading}
+                  className="text-lg"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleMax}
+                  disabled={isLoading || isSubmitting || balance.isLoading || availableBalance <= 0}
+                  className="px-3"
+                >
+                  Max
+                </Button>
+              </div>
               <p className="text-xs text-muted-foreground">
-                Enter the amount you want to deposit
+                {availableBalance > 0 
+                  ? `Enter the amount you want to deposit (max: ${availableBalance.toFixed(6)} ${opportunity.token.symbol})`
+                  : 'No tokens available in wallet'
+                }
               </p>
             </div>
 
@@ -180,7 +234,14 @@ export function DepositModal({
               </Button>
               <Button
                 type="submit"
-                disabled={!amount || parseFloat(amount) <= 0 || isLoading || isSubmitting}
+                disabled={
+                  !amount || 
+                  parseFloat(amount) <= 0 || 
+                  parseFloat(amount) > availableBalance || 
+                  isLoading || 
+                  isSubmitting ||
+                  balance.isLoading
+                }
                 className="flex-1"
               >
                 {isSubmitting ? (

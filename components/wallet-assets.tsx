@@ -4,7 +4,7 @@ import { Card } from './ui/card';
 import { Skeleton } from './ui/skeleton';
 import { Button } from './ui/button';
 import { AlertCircle, Coins, Copy, Check, Send } from 'lucide-react';
-import { useWalletBalance } from '@/hooks/use-wallet-balance';
+import { useWalletContext } from '@/contexts/wallet-context';
 import { SendAssetModal } from './send-asset-modal';
 import { useState } from 'react';
 
@@ -13,7 +13,8 @@ interface WalletAssetsProps {
 }
 
 export function WalletAssets({ address }: WalletAssetsProps) {
-  const { sol, tokens, isLoading, error } = useWalletBalance(address);
+  const { balance } = useWalletContext();
+  const { sol, tokens, isLoading, error } = balance;
   const [copiedMint, setCopiedMint] = useState<string | null>(null);
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<any>(null);
