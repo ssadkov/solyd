@@ -294,9 +294,17 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
                     type="number"
                     step="any"
                     min="0"
+                    max={selectedTokenIn?.balance || undefined}
                     placeholder="0.00"
                     value={amount}
-                    onChange={(e) => setAmount(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value
+                      // Проверяем, что введенная сумма не превышает баланс
+                      if (selectedTokenIn && parseFloat(value) > selectedTokenIn.balance) {
+                        return // Не обновляем, если превышает баланс
+                      }
+                      setAmount(value)
+                    }}
                     disabled={isLoading || isSubmitting}
                     className="text-lg"
                   />
@@ -315,6 +323,13 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
                   <span>Balance: {selectedTokenIn.balance.toFixed(6)} {selectedTokenIn.symbol}</span>
                   <span>≈ ${selectedTokenIn.usdValue.toFixed(2)}</span>
+                </div>
+              )}
+              
+              {/* Dynamic USD calculation for input amount */}
+              {selectedTokenIn && amount && parseFloat(amount) > 0 && (
+                <div className="flex items-center justify-end text-sm text-blue-600 font-medium">
+                  ≈ ${(parseFloat(amount) * selectedTokenIn.price).toFixed(2)} USD
                 </div>
               )}
             </div>
@@ -357,10 +372,17 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
                   Expected output
                 </div>
               </div>
-              {selectedTokenOut && selectedTokenOut.apy && (
-                <div className="flex items-center justify-end text-sm text-green-600">
-                  <TrendingUp className="w-3 h-3 mr-1" />
-                  {selectedTokenOut.apy.toFixed(2)}% APY
+              
+              {/* Expected output USD value */}
+              {quote && selectedTokenOut && (
+                <div className="flex items-center justify-between text-sm">
+                  <div className="flex items-center gap-1 text-green-600">
+                    <TrendingUp className="w-3 h-3" />
+                    {selectedTokenOut.apy?.toFixed(2)}% APY
+                  </div>
+                  <div className="text-blue-600 font-medium">
+                    ≈ ${(parseFloat(formatTokenAmount(parseInt(quote.outAmount), selectedTokenOut.decimals)) * selectedTokenOut.price).toFixed(2)} USD
+                  </div>
                 </div>
               )}
             </div>
