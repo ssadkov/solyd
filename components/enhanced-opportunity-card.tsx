@@ -7,6 +7,7 @@ import { Card } from './ui/card'
 import { TrendingUp, Plus, Minus } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { DepositModal } from './deposit-modal'
+import { WithdrawModal } from './withdraw-modal'
 import { SuccessMessage } from './success-message'
 import { useDeposit } from '@/hooks/use-deposit'
 
@@ -45,6 +46,7 @@ export function EnhancedOpportunityCard({
   onStartEarning 
 }: EnhancedOpportunityCardProps) {
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false)
+  const [isWithdrawModalOpen, setIsWithdrawModalOpen] = useState(false)
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
   const [lastDepositAmount, setLastDepositAmount] = useState('')
   
@@ -79,6 +81,28 @@ export function EnhancedOpportunityCard({
 
   const handleStartEarning = () => {
     setIsDepositModalOpen(true)
+  }
+
+  const handleWithdraw = async (amount: string) => {
+    try {
+      // TODO: Implement withdraw logic
+      console.log('Withdrawing:', amount, 'from', opportunity.token.symbol)
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      // Store withdraw amount and show success message
+      setLastDepositAmount(`-${amount}`) // Negative to indicate withdrawal
+      setIsWithdrawModalOpen(false)
+      setIsSuccessModalOpen(true)
+    } catch (err) {
+      console.error('Withdraw failed:', err)
+      // Error is handled by the useWithdraw hook
+    }
+  }
+
+  const handleWithdrawClick = () => {
+    setIsWithdrawModalOpen(true)
   }
 
   return (
@@ -185,7 +209,7 @@ export function EnhancedOpportunityCard({
               </Button>
               <Button 
                 className="flex-1" 
-                onClick={() => onWithdraw?.(opportunity)}
+                onClick={handleWithdrawClick}
                 variant="outline"
                 size="sm"
               >
@@ -210,6 +234,16 @@ export function EnhancedOpportunityCard({
         onClose={() => setIsDepositModalOpen(false)}
         opportunity={opportunity}
         onDeposit={handleDeposit}
+        isLoading={isLoading}
+        error={error}
+      />
+
+      {/* Withdraw Modal */}
+      <WithdrawModal
+        isOpen={isWithdrawModalOpen}
+        onClose={() => setIsWithdrawModalOpen(false)}
+        opportunity={opportunity}
+        onWithdraw={handleWithdraw}
         isLoading={isLoading}
         error={error}
       />
