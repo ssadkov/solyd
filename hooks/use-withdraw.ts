@@ -30,7 +30,7 @@ export function useWithdraw(): UseWithdrawReturn {
         },
         body: JSON.stringify({
           asset,
-          signer: publicKey.toString(),
+          signer: publicKey!.toString(),
           amount,
         }),
       })
@@ -47,7 +47,7 @@ export function useWithdraw(): UseWithdrawReturn {
 
       // Step 4: Update transaction with fresh blockhash and fee payer
       transaction.recentBlockhash = blockhash
-      transaction.feePayer = publicKey
+      transaction.feePayer = publicKey!
 
       // Step 5: Simulate transaction before signing
       try {
@@ -62,7 +62,7 @@ export function useWithdraw(): UseWithdrawReturn {
       }
 
       // Step 6: Sign transaction
-      const signedTransaction = await signTransaction(transaction)
+      const signedTransaction = await signTransaction!(transaction)
 
       // Step 7: Send transaction to Solana network
       const signature = await connection.sendRawTransaction(signedTransaction.serialize(), {

@@ -19,12 +19,11 @@ interface SendAssetModalProps {
     logo?: string;
     decimals?: number;
   };
-  walletId: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function SendAssetModal({ asset, walletId, isOpen, onClose }: SendAssetModalProps) {
+export function SendAssetModal({ asset, isOpen, onClose }: SendAssetModalProps) {
   const [recipient, setRecipient] = useState('');
   const [amount, setAmount] = useState('');
   const [isValidAddress, setIsValidAddress] = useState(true);
@@ -75,7 +74,6 @@ export function SendAssetModal({ asset, walletId, isOpen, onClose }: SendAssetMo
 
     try {
       const response = await sendTransaction({
-        walletId,
         recipient,
         amount: parseFloat(amount),
         mint: asset.mint === 'So11111111111111111111111111111111111111112' ? undefined : asset.mint,

@@ -30,10 +30,6 @@ export function WalletAssets({ address }: WalletAssetsProps) {
     setSendModalOpen(true);
   };
 
-  // Get wallet ID from address (for now, using address as wallet ID)
-  // In a real app, you'd get this from wallet adapter
-  const walletId = address;
-
   const handleCloseModal = () => {
     setSendModalOpen(false);
     setSelectedAsset(null);
@@ -182,7 +178,6 @@ export function WalletAssets({ address }: WalletAssetsProps) {
     {selectedAsset && (
       <SendAssetModal
         asset={selectedAsset}
-        walletId={walletId}
         isOpen={sendModalOpen}
         onClose={handleCloseModal}
       />
