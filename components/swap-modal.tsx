@@ -6,11 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, ArrowUpDown, AlertCircle, CheckCircle, Wallet, TrendingUp } from 'lucide-react'
+import { Loader2, AlertCircle, CheckCircle, Wallet, TrendingUp } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { useWalletContext } from '@/contexts/wallet-context'
 import { useSwap } from '@/hooks/use-swap'
 import { useEnhancedOpportunities } from '@/hooks/use-enhanced-opportunities'
+import { useWalletBalance } from '@/hooks/use-wallet-balance'
 import { TokenSelector } from '@/components/token-selector'
 import { JupiterTokenService, JupiterTokenData } from '@/services/jupiter-token.service'
 
@@ -25,8 +26,8 @@ interface TokenOption {
   decimals: number
   logo: string
   price: number
-  balance: number
-  usdValue: number
+  balance?: number
+  usdValue?: number
   apy?: number
 }
 
@@ -39,6 +40,10 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
   const [isLoadingTokens, setIsLoadingTokens] = useState(false)
   
   const { balance, walletAddress } = useWalletContext()
+  const { 
+    solUsdPrice, 
+    solUsdValue 
+  } = useWalletBalance(walletAddress)
   const { opportunities } = useEnhancedOpportunities(walletAddress)
   const { quote, isLoading, error, getQuote, clearQuote } = useSwap()
 
@@ -93,8 +98,8 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
           decimals: 9,
           logo: solTokenInfo?.icon || 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png',
           price: solTokenInfo?.usdPrice || 0,
-          balance: balance.sol,
-          usdValue: usdValue,
+          balance: balance.sol || 0,
+          usdValue: usdValue || 0,
         }]
       })() : []),
       // Add tokens
@@ -107,8 +112,8 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
           decimals: token.decimals,
           logo: tokenInfo?.icon || token.logo || 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png',
           price: tokenInfo?.usdPrice || 0,
-          balance: token.uiAmount,
-          usdValue: usdValue,
+          balance: token.uiAmount || 0,
+          usdValue: usdValue || 0,
         }
       })
     ]
@@ -141,9 +146,9 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
         address: 'So11111111111111111111111111111111111111112',
         decimals: 9,
         logo: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png',
-        price: balance.solUsdPrice || 0,
-        balance: 0,
-        usdValue: 0,
+        price: solUsdPrice || 0,
+        balance: balance.sol || 0,
+        usdValue: solUsdValue || 0,
         apy: 0,
       },
       {
@@ -167,14 +172,14 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
         index === self.findIndex(t => t.address === token.address)
       )
       .filter(token => token.price > 0)
-  }, [opportunities, balance.solUsdPrice])
+  }, [opportunities, solUsdPrice])
 
   // Устанавливаем токены по умолчанию при открытии модального окна
   useEffect(() => {
     if (isOpen && tokenInOptions.length > 0 && tokenOutOptions.length > 0 && !selectedTokenIn && !selectedTokenOut) {
       // Токен in с наибольшим USD значением
       const bestTokenIn = tokenInOptions.reduce((best, current) => 
-        current.usdValue > best.usdValue ? current : best
+        (current.usdValue || 0) > (best.usdValue || 0) ? current : best
       )
       setSelectedTokenIn(bestTokenIn)
 
@@ -218,16 +223,10 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
 
   const handleMax = () => {
     if (selectedTokenIn) {
-      setAmount(selectedTokenIn.balance.toString())
+      setAmount((selectedTokenIn.balance || 0).toString())
     }
   }
 
-  const handleSwapTokens = () => {
-    const temp = selectedTokenIn
-    setSelectedTokenIn(selectedTokenOut)
-    setSelectedTokenOut(temp)
-    clearQuote()
-  }
 
   const formatTokenAmount = (amount: number, decimals: number) => {
     return (amount / Math.pow(10, decimals)).toFixed(6)
@@ -237,8 +236,7 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <ArrowUpDown className="w-5 h-5" />
+          <DialogTitle>
             Swap Tokens
           </DialogTitle>
           <DialogDescription>
@@ -282,7 +280,7 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
               <TokenSelector
                 label="From"
                 selectedToken={selectedTokenIn}
-                onTokenSelect={setSelectedTokenIn}
+                onTokenSelect={(token) => setSelectedTokenIn(token)}
                 tokens={tokenInOptions}
                 placeholder="Select token to swap from"
                 disabled={isLoading || isSubmitting}
@@ -300,7 +298,7 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
                     onChange={(e) => {
                       const value = e.target.value
                       // Проверяем, что введенная сумма не превышает баланс
-                      if (selectedTokenIn && parseFloat(value) > selectedTokenIn.balance) {
+                      if (selectedTokenIn && parseFloat(value) > (selectedTokenIn.balance || 0)) {
                         return // Не обновляем, если превышает баланс
                       }
                       setAmount(value)
@@ -321,8 +319,8 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
               </div>
               {selectedTokenIn && (
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
-                  <span>Balance: {selectedTokenIn.balance.toFixed(6)} {selectedTokenIn.symbol}</span>
-                  <span>≈ ${selectedTokenIn.usdValue.toFixed(2)}</span>
+                  <span>Balance: {(selectedTokenIn.balance || 0).toFixed(6)} {selectedTokenIn.symbol}</span>
+                  <span>≈ ${(selectedTokenIn.usdValue || 0).toFixed(2)}</span>
                 </div>
               )}
               
@@ -334,26 +332,12 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
               )}
             </div>
 
-            {/* Swap Button */}
-            <div className="flex justify-center">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleSwapTokens}
-                disabled={!selectedTokenIn || !selectedTokenOut}
-                className="rounded-full"
-              >
-                <ArrowUpDown className="w-4 h-4" />
-              </Button>
-            </div>
-
             {/* Token Out */}
             <div className="space-y-2">
               <TokenSelector
                 label="To"
                 selectedToken={selectedTokenOut}
-                onTokenSelect={setSelectedTokenOut}
+                onTokenSelect={(token) => setSelectedTokenOut(token)}
                 tokens={tokenOutOptions}
                 placeholder="Select token to swap to"
                 disabled={isLoading || isSubmitting}
