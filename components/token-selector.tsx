@@ -145,6 +145,11 @@ export function TokenSelector({
                         {token.apy.toFixed(2)}% APY
                       </span>
                     )}
+                    {token.price > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        ${token.price.toFixed(2)}
+                      </span>
+                    )}
                     {selectedToken?.address === token.address && (
                       <Check className="w-4 h-4 text-primary" />
                     )}
