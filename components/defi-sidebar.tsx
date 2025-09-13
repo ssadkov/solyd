@@ -41,11 +41,14 @@ export function DefiSidebar({ onSwapClick, ...props }: DefiSidebarProps) {
           <SidebarMenuItem>
             <SidebarMenuButton
               asChild
-              className="data-[slot=sidebar-menu-button]:!p-1.5"
+              className="data-[slot=sidebar-menu-button]:!px-0 !py-0 !h-auto"
             >
-              <a href="#">
-                <IconCoins className="!size-5" />
-                <span className="text-3xl font-bold text-primary">Solyd</span>
+              <a href="#" className="flex justify-start w-full">
+                <img 
+                  src="/solyd_logo_gor.jpg" 
+                  alt="Solyd" 
+                  className="w-full max-w-48 h-auto object-contain"
+                />
               </a>
             </SidebarMenuButton>
           </SidebarMenuItem>
