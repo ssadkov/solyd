@@ -135,6 +135,7 @@ export function WalletAssets({ address }: WalletAssetsProps) {
         usdPrice: solTokenInfo?.usdPrice,
         priceChange24h: solTokenInfo?.stats24h?.priceChange,
         isVerified: solTokenInfo?.isVerified,
+        usdValue: usdValue || 0, // Добавляем для сортировки
       }];
     })() : []),
     // Add tokens
@@ -151,9 +152,10 @@ export function WalletAssets({ address }: WalletAssetsProps) {
         usdPrice: tokenInfo?.usdPrice,
         priceChange24h: tokenInfo?.stats24h?.priceChange,
         isVerified: tokenInfo?.isVerified,
+        usdValue: usdValue || 0, // Добавляем для сортировки
       };
     })
-  ];
+  ].sort((a, b) => b.usdValue - a.usdValue); // Сортируем по USD стоимости (от большего к меньшему)
 
   if (allAssets.length === 0) {
     return (
@@ -193,10 +195,11 @@ export function WalletAssets({ address }: WalletAssetsProps) {
                   <div className="flex items-center gap-1">
                     <div className="font-medium">{asset.symbol}</div>
                     {asset.isVerified && (
-                      <div className="w-2 h-2 bg-green-500 rounded-full" title="Verified token" />
+                      <div className="w-2 h-2 bg-green-500 rounded-full" title="Verified token - проверенный токен" />
                     )}
                   </div>
-                  <Button
+                  {/* Временно скрыты кнопки копирования и отправки */}
+                  {/* <Button
                     variant="ghost"
                     size="sm"
                     onClick={() => copyMintAddress(asset.mint)}
@@ -207,7 +210,7 @@ export function WalletAssets({ address }: WalletAssetsProps) {
                     ) : (
                       <Copy className="h-3 w-3" />
                     )}
-                  </Button>
+                  </Button> */}
                 </div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {asset.balance} {asset.symbol}
@@ -222,7 +225,8 @@ export function WalletAssets({ address }: WalletAssetsProps) {
                     </div>
                   )}
                 </div>
-                <Button
+                {/* Временно скрыта кнопка отправки */}
+                {/* <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => handleSendAsset(asset)}
@@ -230,7 +234,7 @@ export function WalletAssets({ address }: WalletAssetsProps) {
                   title={`Send ${asset.symbol}`}
                 >
                   <Send className="h-3 w-3 text-gray-500" />
-                </Button>
+                </Button> */}
               </div>
             </div>
           </Card>
