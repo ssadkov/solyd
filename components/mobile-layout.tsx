@@ -1,11 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useAggregatorData } from '@/hooks/use-aggregator-data'
+import { useEnhancedOpportunities } from '@/hooks/use-enhanced-opportunities'
+import { useLendPositions } from '@/hooks/use-lend-positions'
+import { useEarnings } from '@/hooks/use-earnings'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
-import { HelpCircle, Wallet, Coins, Copy, Check, LogOut } from 'lucide-react'
+import { HelpCircle, Wallet, Coins, Copy, Check, LogOut, TrendingUp } from 'lucide-react'
+import { IconTrendingUp } from "@tabler/icons-react"
 import {
   Dialog,
   DialogContent,
@@ -19,6 +23,7 @@ import { useWalletContext } from '@/contexts/wallet-context'
 import { useTotalBalance } from '@/hooks/use-total-balance'
 import { JupiterTokenService, JupiterTokenData } from '@/services/jupiter-token.service'
 import { JupiterPriceService } from '@/services/jupiter-price.service'
+import { EnhancedOpportunityCard } from '@/components/enhanced-opportunity-card'
 
 export default function MobileLayout() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'wallet'>('dashboard')
@@ -36,6 +41,31 @@ export default function MobileLayout() {
   
   const address = publicKey?.toString()
   const truncatedAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : ''
+  
+  // Enhanced opportunities data
+  const { 
+    opportunities: enhancedOpportunities, 
+    isLoading: isEnhancedLoading, 
+    error: enhancedError 
+  } = useEnhancedOpportunities(address)
+
+  // Получаем позиции пользователя для расчета earnings
+  const { positions } = useLendPositions(address)
+  
+  // Мемоизируем адреса активных позиций (только Jupiter)
+  const jupiterPositionAddresses = React.useMemo(() => {
+    return positions
+      .filter(position => position.protocol === 'Jupiter' && parseFloat(position.shares) > 0)
+      .map(position => position.jupiterTokenAddress)
+      .filter((address): address is string => address !== undefined)
+  }, [positions])
+
+  // Получаем earnings данные
+  const {
+    totalEarningsUSD,
+    isLoading: isEarningsLoading,
+    error: earningsError
+  } = useEarnings(address, jupiterPositionAddresses, positions)
   
   // Получаем общую сумму включая позиции в Jupiter
   const { totalBalance, isLoading: isTotalLoading } = useTotalBalance(address)
@@ -119,24 +149,56 @@ export default function MobileLayout() {
   const DashboardContent = () => (
     <div className="flex-1 p-4 overflow-y-auto">
       <div className="mb-6 text-center">
-        <h1 className="text-5xl font-bold mb-2 text-primary">Solyd</h1>
+        <div className="mb-4 flex justify-center">
+          <img 
+            src="/solyd_logo_gor.jpg" 
+            alt="Solyd" 
+            className="h-16 w-auto object-contain"
+          />
+        </div>
         <p className="text-muted-foreground text-base">
           Discover and participate in various DeFi protocols on Solana
         </p>
       </div>
 
+      {/* Stats Cards */}
+      <div className="grid grid-cols-2 gap-3 mb-6">
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Total Earned</p>
+              <p className="text-lg font-bold">
+                {isEarningsLoading ? '...' : `$${totalEarningsUSD.toFixed(2)}`}
+              </p>
+            </div>
+            <IconTrendingUp className="h-5 w-5 text-primary" />
+          </div>
+        </Card>
 
-      {/* Earning Opportunities */}
+        <Card className="p-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-xs font-medium text-muted-foreground">Positions</p>
+              <p className="text-lg font-bold">
+                {isLoading ? '...' : positions.filter(p => parseFloat(p.shares) > 0).length}
+              </p>
+            </div>
+            <IconTrendingUp className="h-5 w-5 text-primary" />
+          </div>
+        </Card>
+      </div>
+
+      {/* Enhanced Opportunities */}
       <div className="mt-6">
-        <h2 className="text-lg font-semibold mb-4">Available Strategies</h2>
+        <h2 className="text-lg font-semibold mb-4">Enhanced Opportunities</h2>
         <div className="space-y-4">
-          {isLoading ? (
+          {isEnhancedLoading ? (
             // Loading skeleton
             [...Array(3)].map((_, index) => (
               <Card key={index} className="p-4 animate-pulse">
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-muted rounded-full"></div>
+                    <div className="w-10 h-10 bg-muted rounded-full"></div>
                     <div>
                       <div className="h-4 bg-muted rounded w-20 mb-2"></div>
                       <div className="h-3 bg-muted rounded w-16"></div>
@@ -148,68 +210,27 @@ export default function MobileLayout() {
                   </div>
                 </div>
                 <div className="h-3 bg-muted rounded w-full mb-3"></div>
-                <div className="h-8 bg-muted rounded w-full"></div>
+                <div className="h-10 bg-muted rounded w-full"></div>
               </Card>
             ))
-          ) : aggregatorData.length === 0 ? (
+          ) : enhancedOpportunities.length === 0 ? (
             <Card className="p-4 text-center">
               <p className="text-muted-foreground">No opportunities available</p>
             </Card>
           ) : (
-            aggregatorData.slice(0, 3).map((opportunity, index) => (
-              <Card key={index} className="p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
-                      {opportunity.token.logo ? (
-                        <img 
-                          src={opportunity.token.logo} 
-                          alt={opportunity.token.symbol}
-                          className="w-8 h-8 rounded-full object-cover"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none'
-                            e.currentTarget.nextElementSibling?.classList.remove('hidden')
-                          }}
-                        />
-                      ) : null}
-                      <span className={`${opportunity.token.logo ? 'hidden' : ''} text-muted-foreground`}>
-                        {opportunity.token.symbol.slice(0, 2)}
-                      </span>
-                    </div>
-                    <div>
-                      <h3 className="font-semibold">{opportunity.token.symbol} Lending</h3>
-                      <p className="text-sm text-muted-foreground">{opportunity.protocol}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xl font-bold text-green-500">{opportunity.apy.toFixed(2)}%</div>
-                    <div className="text-xs text-muted-foreground">APY</div>
-                  </div>
-                </div>
-           
-                <div className="flex items-center justify-between mb-3">
-                  <div className="text-sm">
-                    <span className="text-muted-foreground">TVL: </span>
-                    <span className="font-medium">${(opportunity.tvl / 1000000).toFixed(1)}M</span>
-                  </div>
-                  <div className="text-sm">
-                    <span className={`px-2 py-1 rounded-full text-xs ${
-                      opportunity.isActive 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-muted text-muted-foreground'
-                    }`}>
-                      {opportunity.isActive ? 'Active' : 'Inactive'}
-                    </span>
-                  </div>
-                </div>
-                <Button 
-                  className="w-full" 
-                  disabled={!opportunity.isActive}
-                  variant={!opportunity.isActive ? 'outline' : 'default'}
-                >
-                  {!opportunity.isActive ? 'Coming Soon' : 'Start Earning'}
-                </Button>
-              </Card>
+            enhancedOpportunities.slice(0, 5).map((opportunity) => (
+              <EnhancedOpportunityCard
+                key={`${opportunity.protocol}-${opportunity.token.symbol}`}
+                opportunity={opportunity}
+                onWithdraw={(opp) => {
+                  console.log('Withdraw clicked for:', opp.token.symbol)
+                  // TODO: Implement withdraw functionality
+                }}
+                onSwapAndDeposit={(opp) => {
+                  console.log('Swap and deposit clicked for:', opp.token.symbol)
+                  // TODO: Implement swap and deposit functionality
+                }}
+              />
             ))
           )}
         </div>
@@ -435,7 +456,7 @@ export default function MobileLayout() {
             onClick={() => setActiveTab('dashboard')}
           >
             <Coins className="w-5 h-5 mb-1" />
-            <span className="text-xs font-medium">Dashboard</span>
+            <span className="text-xs font-medium">Earn</span>
           </button>
           <button
             className={`flex-1 flex flex-col items-center py-3 px-4 ${
