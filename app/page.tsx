@@ -118,7 +118,7 @@ export default function Home() {
                                 </span>
                               </div>
                               <div>
-                                <h3 className="text-lg font-semibold">{opportunity.token.symbol} Lending</h3>
+                                <h3 className="text-lg font-semibold">{opportunity.token.symbol} </h3>
                                 <p className="text-sm text-muted-foreground">{opportunity.protocol}</p>
                               </div>
                             </div>
@@ -127,9 +127,7 @@ export default function Home() {
                               <div className="text-xs text-muted-foreground">APY</div>
                             </div>
                           </div>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            Lend {opportunity.token.symbol} to earn {opportunity.apy.toFixed(2)}% APY
-                          </p>
+                          
                           <div className="flex items-center justify-between mb-4">
                             <div className="text-sm">
                               <span className="text-muted-foreground">TVL: </span>

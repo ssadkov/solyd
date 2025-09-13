@@ -99,9 +99,7 @@ export default function MobileLayout() {
                     <div className="text-xs text-muted-foreground">APY</div>
                   </div>
                 </div>
-                <p className="text-sm text-muted-foreground mb-3">
-                  Lend {opportunity.token.symbol} to earn {opportunity.apy.toFixed(2)}% APY
-                </p>
+           
                 <div className="flex items-center justify-between mb-3">
                   <div className="text-sm">
                     <span className="text-muted-foreground">TVL: </span>
