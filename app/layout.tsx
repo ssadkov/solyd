@@ -17,6 +17,15 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Solyd - DeFi Dashboard",
   description: "Discover and participate in various DeFi protocols on Solana",
+  keywords: ["DeFi", "Solana", "Jupiter", "Yield Farming", "Lending"],
+  authors: [{ name: "Solyd Team" }],
+  creator: "Solyd",
+  publisher: "Solyd",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
   icons: {
     icon: [
       { url: "/favicon-16x16.png", sizes: "16x16", type: "image/png" },
@@ -32,6 +41,28 @@ export const metadata: Metadata = {
     ],
   },
   manifest: "/site.webmanifest",
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://solyd.app",
+    title: "Solyd - DeFi Dashboard",
+    description: "Discover and participate in various DeFi protocols on Solana",
+    siteName: "Solyd",
+    images: [
+      {
+        url: "/android-chrome-512x512.png",
+        width: 512,
+        height: 512,
+        alt: "Solyd Logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Solyd - DeFi Dashboard",
+    description: "Discover and participate in various DeFi protocols on Solana",
+    images: ["/android-chrome-512x512.png"],
+  },
 };
 
 export default function RootLayout({
@@ -41,6 +72,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="icon" href="/favicon-16x16.png" sizes="16x16" type="image/png" />
+        <link rel="icon" href="/favicon-32x32.png" sizes="32x32" type="image/png" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+        <link rel="manifest" href="/site.webmanifest" />
+        <meta name="theme-color" content="#000000" />
+        <meta name="msapplication-TileColor" content="#000000" />
+        <meta name="msapplication-config" content="/browserconfig.xml" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
