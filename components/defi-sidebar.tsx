@@ -4,6 +4,7 @@ import * as React from "react"
 import {
   IconWallet,
   IconCoins,
+  IconArrowsLeftRight,
 } from "@tabler/icons-react"
 
 import { Button } from "@/components/ui/button"
@@ -27,7 +28,11 @@ const data = {
   navSecondary: [],
 }
 
-export function DefiSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+interface DefiSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  onSwapClick?: () => void
+}
+
+export function DefiSidebar({ onSwapClick, ...props }: DefiSidebarProps) {
   const { walletAddress } = useWalletContext();
   return (
     <Sidebar collapsible="offcanvas" {...props}>
@@ -57,9 +62,22 @@ export function DefiSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) 
 
         {/* Wallet Assets */}
         <div className="p-4">
-          <div className="flex items-center gap-2 mb-4">
-            <IconCoins className="w-5 h-5 text-primary" />
-            <h2 className="text-lg font-semibold">Wallet Assets</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <IconCoins className="w-5 h-5 text-primary" />
+              <h2 className="text-lg font-semibold">Wallet Assets</h2>
+            </div>
+            {walletAddress && onSwapClick && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={onSwapClick}
+                className="h-8 px-2"
+              >
+                <IconArrowsLeftRight className="w-4 h-4 mr-1" />
+                Swap
+              </Button>
+            )}
           </div>
           
           {walletAddress ? (

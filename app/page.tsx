@@ -5,6 +5,7 @@ import { DefiCards } from "@/components/defi-cards"
 import { EnhancedOpportunityCard } from "@/components/enhanced-opportunity-card"
 import HelpPanel from "@/components/layout/HelpPanel"
 import MobileLayout from "@/components/mobile-layout"
+import { SwapModal } from "@/components/swap-modal"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useAggregatorData } from "@/hooks/use-aggregator-data"
 import { useEnhancedOpportunities } from "@/hooks/use-enhanced-opportunities"
@@ -14,12 +15,14 @@ import {
   SidebarProvider,
 } from "@/components/ui/sidebar"
 import { WalletProvider } from '@/contexts/wallet-context'
+import { useState } from 'react'
 
 export default function Home() {
   const isMobile = useIsMobile()
   const { data: aggregatorData, isLoading, error } = useAggregatorData()
   const { publicKey } = useWallet()
   const walletAddress = publicKey?.toString()
+  const [isSwapModalOpen, setIsSwapModalOpen] = useState(false)
   
   // Используем новый хук для получения объединенных данных
   const { 
@@ -56,7 +59,10 @@ export default function Home() {
           } as React.CSSProperties
         }
       >
-        <DefiSidebar variant="inset" />
+        <DefiSidebar 
+          variant="inset" 
+          onSwapClick={() => setIsSwapModalOpen(true)}
+        />
         <SidebarInset>
           <div className="flex h-screen">
             {/* Main Dashboard Area */}
@@ -133,6 +139,12 @@ export default function Home() {
           </div>
         </SidebarInset>
       </SidebarProvider>
+      
+      {/* Swap Modal */}
+      <SwapModal 
+        isOpen={isSwapModalOpen}
+        onClose={() => setIsSwapModalOpen(false)}
+      />
     </WalletProvider>
   )
 }
