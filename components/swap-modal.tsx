@@ -38,6 +38,7 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
   const [selectedTokenOut, setSelectedTokenOut] = useState<TokenOption | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [swapStep, setSwapStep] = useState<'quote' | 'confirm' | 'executing' | 'depositing' | 'success'>('quote')
+  const [isSwapOnly, setIsSwapOnly] = useState(false)
   const [transactionSignature, setTransactionSignature] = useState<string | null>(null)
   const [depositSignature, setDepositSignature] = useState<string | null>(null)
   const [tokenData, setTokenData] = useState<JupiterTokenData[]>([])
@@ -301,6 +302,7 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
     setTransactionSignature(null)
     setDepositSignature(null)
     setDepositAmount('')
+    setIsSwapOnly(false)
     clearQuote()
     onClose()
   }
@@ -536,25 +538,78 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
                   )}
                 </Button>
               ) : (
-                <Button
-                  type="submit"
-                  disabled={isLoading || isSubmitting || isDepositLoading}
-                  className="w-full"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      {swapStep === 'executing' ? 'Executing Swap...' : 
-                       swapStep === 'depositing' ? 'Depositing...' : 
-                       'Processing...'}
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="w-4 h-4 mr-2" />
-                      Swap & Deposit
-                    </>
-                  )}
-                </Button>
+                <>
+                  {/* Swap & Deposit Button (Left) */}
+                  <Button
+                    type="submit"
+                    disabled={isLoading || isSubmitting || isDepositLoading}
+                    className="flex-1 bg-black hover:bg-gray-800 text-white"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        {swapStep === 'executing' ? 'Executing Swap...' : 
+                         swapStep === 'depositing' ? 'Depositing...' : 
+                         'Processing...'}
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Swap & Deposit
+                      </>
+                    )}
+                  </Button>
+                  
+                  {/* Swap Only Button (Right) */}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    disabled={isLoading || isSubmitting || isDepositLoading}
+                    className="flex-1"
+                    onClick={async () => {
+                      if (!quote || !walletAddress) return
+                      
+                      setSwapStep('executing')
+                      setIsSubmitting(true)
+                      
+                      try {
+                        // Получаем swap instructions
+                        const instructions = await getSwapInstructions({
+                          quoteResponse: quote,
+                          userPublicKey: walletAddress,
+                          wrapAndUnwrapSol: true,
+                          useSharedAccounts: true,
+                          dynamicComputeUnitLimit: true,
+                          prioritizationFeeLamports: "auto"
+                        })
+
+                        // Выполняем только swap
+                        const signature = await executeSwap(instructions, walletAddress)
+                        
+                        // Обновляем баланс
+                        refreshBalance()
+                        
+                        setTransactionSignature(signature)
+                        setIsSwapOnly(true)
+                        setSwapStep('success')
+                      } catch (err) {
+                        console.error('Swap failed:', err)
+                        setSwapStep('confirm')
+                      } finally {
+                        setIsSubmitting(false)
+                      }
+                    }}
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Executing Swap...
+                      </>
+                    ) : (
+                      'Swap Only'
+                    )}
+                  </Button>
+                </>
               )}
             </div>
           </form>
@@ -580,15 +635,18 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
               {/* Main Message */}
               <div className="space-y-2">
                 <h2 className="text-2xl font-bold text-green-600">
-                  Swap & Deposit Successful!
+                  {isSwapOnly ? 'Swap Successful!' : 'Swap & Deposit Successful!'}
                 </h2>
                 <p className="text-lg text-muted-foreground">
                   <span className="font-semibold text-foreground">{amount} {selectedTokenIn?.symbol}</span>
                   {' '}swapped for{' '}
                   <span className="font-semibold text-foreground">
-                    {depositAmount} {selectedTokenOut?.symbol}
+                    {isSwapOnly 
+                      ? `${quote ? formatTokenAmount(parseInt(quote.outAmount), selectedTokenOut?.decimals || 9) : '0'} ${selectedTokenOut?.symbol}`
+                      : `${depositAmount} ${selectedTokenOut?.symbol}`
+                    }
                   </span>
-                  {' '}and deposited successfully!
+                  {!isSwapOnly && ' and deposited successfully!'}
                 </p>
               </div>
 
@@ -613,7 +671,7 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
                   </div>
                 )}
                 
-                {depositSignature && (
+                {!isSwapOnly && depositSignature && (
                   <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
                     <div className="flex items-center justify-center gap-2 mb-2">
                       <CheckCircle className="w-5 h-5 text-green-600" />
