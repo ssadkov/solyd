@@ -8,6 +8,7 @@ import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { clusterApiUrl } from '@solana/web3.js';
 import { useMemo, useEffect } from 'react';
 import { initializeProtocols } from '@/services/protocols';
+import { WalletProvider as CustomWalletProvider } from '@/contexts/wallet-context';
 
 // Wallet adapter styles are imported in globals.css
 
@@ -35,7 +36,9 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     <ConnectionProvider endpoint={endpoint}>
       <WalletProvider wallets={wallets} autoConnect>
         <WalletModalProvider>
-          {children}
+          <CustomWalletProvider>
+            {children}
+          </CustomWalletProvider>
         </WalletModalProvider>
       </WalletProvider>
     </ConnectionProvider>
