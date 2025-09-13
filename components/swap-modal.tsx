@@ -483,48 +483,71 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
 
             {/* Action Buttons */}
             <div className="flex gap-3 pt-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={handleClose}
-                disabled={isLoading || isSubmitting}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={
-                  !amount || 
-                  parseFloat(amount) <= 0 || 
-                  !selectedTokenIn || 
-                  !selectedTokenOut ||
-                  isLoading || 
-                  isSubmitting
-                }
-                className="flex-1"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {swapStep === 'quote' ? 'Getting Quote...' : 'Executing Swap...'}
-                  </>
-                ) : (
-                  <>
-                    {swapStep === 'quote' ? (
+              {swapStep === 'quote' ? (
+                <Button
+                  type="submit"
+                  disabled={
+                    !amount || 
+                    parseFloat(amount) <= 0 || 
+                    !selectedTokenIn || 
+                    !selectedTokenOut ||
+                    isLoading || 
+                    isSubmitting
+                  }
+                  className="w-full"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Getting Quote...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Get Quote
+                    </>
+                  )}
+                </Button>
+              ) : (
+                <>
+                  <Button
+                    type="button"
+                    onClick={() => {
+                      // TODO: Implement swap and deposit functionality
+                      console.log('Swap and deposit clicked')
+                    }}
+                    disabled={isLoading || isSubmitting}
+                    className="flex-1"
+                  >
+                    {isSubmitting ? (
                       <>
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Get Quote
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Executing...
                       </>
                     ) : (
                       <>
                         <CheckCircle className="w-4 h-4 mr-2" />
-                        Swap
+                        Swap and Deposit
                       </>
                     )}
-                  </>
-                )}
-              </Button>
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={isLoading || isSubmitting}
+                    className="flex-1"
+                    variant="outline"
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        Executing Swap...
+                      </>
+                    ) : (
+                      'Swap'
+                    )}
+                  </Button>
+                </>
+              )}
             </div>
           </form>
 
