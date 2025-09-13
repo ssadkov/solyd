@@ -7,6 +7,8 @@ import { Card } from './ui/card'
 import { TrendingUp, Plus, Minus } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { DepositModal } from './deposit-modal'
+import { SuccessMessage } from './success-message'
+import { useDeposit } from '@/hooks/use-deposit'
 
 interface EnhancedOpportunity {
   token: {
@@ -43,39 +45,40 @@ export function EnhancedOpportunityCard({
   onStartEarning 
 }: EnhancedOpportunityCardProps) {
   const [isDepositModalOpen, setIsDepositModalOpen] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
+  const [lastDepositAmount, setLastDepositAmount] = useState('')
   
+  const { deposit, isLoading, error } = useDeposit()
   const { userPosition } = opportunity
   const hasPosition = userPosition?.hasPosition || false
 
   const handleDeposit = async (amount: string) => {
-    setIsLoading(true)
-    setError(null)
-    
     try {
-      // TODO: Implement deposit logic
-      console.log('Depositing:', amount, 'to', opportunity.token.symbol)
+      // Convert amount to lamports (assuming 6 decimals for most tokens)
+      const decimals = opportunity.token.decimals || 6
+      const amountInLamports = Math.floor(parseFloat(amount) * Math.pow(10, decimals)).toString()
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Execute deposit
+      const signature = await deposit(opportunity.token.address, amountInLamports)
       
+      console.log('Deposit successful:', signature)
+      
+      // Store deposit amount and show success message
+      setLastDepositAmount(amount)
       setIsDepositModalOpen(false)
+      setIsSuccessModalOpen(true)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Deposit failed')
-    } finally {
-      setIsLoading(false)
+      console.error('Deposit failed:', err)
+      // Error is handled by the useDeposit hook
     }
   }
 
   const handleAddMore = () => {
     setIsDepositModalOpen(true)
-    setError(null)
   }
 
   const handleStartEarning = () => {
     setIsDepositModalOpen(true)
-    setError(null)
   }
 
   return (
@@ -209,6 +212,16 @@ export function EnhancedOpportunityCard({
         onDeposit={handleDeposit}
         isLoading={isLoading}
         error={error}
+      />
+
+      {/* Success Message */}
+      <SuccessMessage
+        isOpen={isSuccessModalOpen}
+        onClose={() => setIsSuccessModalOpen(false)}
+        amount={lastDepositAmount}
+        tokenSymbol={opportunity.token.symbol}
+        apy={opportunity.apy}
+        isFirstDeposit={!hasPosition}
       />
     </Card>
   )
