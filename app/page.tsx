@@ -2,10 +2,13 @@
 
 import { DefiSidebar } from "@/components/defi-sidebar"
 import { DefiCards } from "@/components/defi-cards"
+import { EnhancedOpportunityCard } from "@/components/enhanced-opportunity-card"
 import HelpPanel from "@/components/layout/HelpPanel"
 import MobileLayout from "@/components/mobile-layout"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useAggregatorData } from "@/hooks/use-aggregator-data"
+import { useEnhancedOpportunities } from "@/hooks/use-enhanced-opportunities"
+import { useWallet } from '@solana/wallet-adapter-react'
 import {
   SidebarInset,
   SidebarProvider,
@@ -14,6 +17,15 @@ import {
 export default function Home() {
   const isMobile = useIsMobile()
   const { data: aggregatorData, isLoading, error } = useAggregatorData()
+  const { publicKey } = useWallet()
+  const walletAddress = publicKey?.toString()
+  
+  // Используем новый хук для получения объединенных данных
+  const { 
+    opportunities: enhancedOpportunities, 
+    isLoading: isEnhancedLoading, 
+    error: enhancedError 
+  } = useEnhancedOpportunities(walletAddress)
 
   // Show loading state while determining device type
   if (isMobile === undefined) {
@@ -60,10 +72,10 @@ export default function Home() {
                 {/* DeFi Cards */}
                 <DefiCards data={aggregatorData} isLoading={isLoading} />
                 
-                {/* Earning Opportunities Grid */}
+                {/* Enhanced Earning Opportunities Grid */}
                 <div className="px-4 lg:px-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {isLoading ? (
+                    {isEnhancedLoading ? (
                       // Loading skeleton
                       [...Array(6)].map((_, index) => (
                         <div key={index} className="bg-card border rounded-lg p-6 animate-pulse">
@@ -84,76 +96,36 @@ export default function Home() {
                           <div className="h-8 bg-muted rounded w-full"></div>
                         </div>
                       ))
-                    ) : error ? (
+                    ) : enhancedError ? (
                       // Error state
                       <div className="col-span-full bg-destructive/10 border border-destructive/20 rounded-lg p-6 text-center">
                         <p className="text-destructive">Failed to load opportunities</p>
-                        <p className="text-sm text-muted-foreground mt-2">{error}</p>
+                        <p className="text-sm text-muted-foreground mt-2">{enhancedError}</p>
                       </div>
-                    ) : aggregatorData.length === 0 ? (
+                    ) : enhancedOpportunities.length === 0 ? (
                       // Empty state
                       <div className="col-span-full bg-muted/50 border rounded-lg p-6 text-center">
                         <p className="text-muted-foreground">No opportunities available</p>
                       </div>
                     ) : (
-                      // Real data cards
-                      aggregatorData.slice(0, 6).map((opportunity, index) => (
-                        <div key={index} className="bg-card border rounded-lg p-6 hover:shadow-lg transition-shadow">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold">
-                                {opportunity.token.logo ? (
-                                  <img 
-                                    src={opportunity.token.logo} 
-                                    alt={opportunity.token.symbol}
-                                    className="w-8 h-8 rounded-full object-cover"
-                                    onError={(e) => {
-                                      e.currentTarget.style.display = 'none'
-                                      e.currentTarget.nextElementSibling?.classList.remove('hidden')
-                                    }}
-                                  />
-                                ) : null}
-                                <span className={`${opportunity.token.logo ? 'hidden' : ''} text-muted-foreground`}>
-                                  {opportunity.token.symbol.slice(0, 2)}
-                                </span>
-                              </div>
-                              <div>
-                                <h3 className="text-lg font-semibold">{opportunity.token.symbol} </h3>
-                                <p className="text-sm text-muted-foreground">{opportunity.protocol}</p>
-                              </div>
-                            </div>
-                            <div className="text-right">
-                              <div className="text-2xl font-bold text-green-500">{opportunity.apy.toFixed(2)}%</div>
-                              <div className="text-xs text-muted-foreground">APY</div>
-                            </div>
-                          </div>
-                          
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="text-sm">
-                              <span className="text-muted-foreground">TVL: </span>
-                              <span className="font-medium">${(opportunity.tvl / 1000000).toFixed(1)}M</span>
-                            </div>
-                            <div className="text-sm">
-                              <span className={`px-2 py-1 rounded-full text-xs ${
-                                opportunity.isActive 
-                                  ? 'bg-green-100 text-green-800' 
-                                  : 'bg-muted text-muted-foreground'
-                              }`}>
-                                {opportunity.isActive ? 'Active' : 'Inactive'}
-                              </span>
-                            </div>
-                          </div>
-                          <button 
-                            className={`w-full py-2 px-4 rounded-md text-sm font-medium ${
-                              !opportunity.isActive 
-                                ? 'bg-muted text-muted-foreground cursor-not-allowed' 
-                                : 'bg-primary text-primary-foreground hover:bg-primary/90'
-                            }`}
-                            disabled={!opportunity.isActive}
-                          >
-                            {!opportunity.isActive ? 'Coming Soon' : 'Start Earning'}
-                          </button>
-                        </div>
+                      // Enhanced opportunity cards
+                      enhancedOpportunities.slice(0, 6).map((opportunity, index) => (
+                        <EnhancedOpportunityCard
+                          key={index}
+                          opportunity={opportunity}
+                          onAddMore={(opp) => {
+                            console.log('Add More clicked for:', opp.token.symbol)
+                            // TODO: Implement add more functionality
+                          }}
+                          onWithdraw={(opp) => {
+                            console.log('Withdraw clicked for:', opp.token.symbol)
+                            // TODO: Implement withdraw functionality
+                          }}
+                          onStartEarning={(opp) => {
+                            console.log('Start Earning clicked for:', opp.token.symbol)
+                            // TODO: Implement start earning functionality
+                          }}
+                        />
                       ))
                     )}
                   </div>
