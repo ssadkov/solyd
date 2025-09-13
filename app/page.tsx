@@ -162,6 +162,7 @@ export default function Home() {
                               console.log('Withdraw clicked for:', opp.token.symbol)
                               // TODO: Implement withdraw functionality
                             }}
+                            onSwapAndDeposit={() => setIsSwapModalOpen(true)}
                           />
                         ))
                       )}

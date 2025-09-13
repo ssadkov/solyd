@@ -36,6 +36,7 @@ interface DepositModalProps {
   onClose: () => void
   opportunity: EnhancedOpportunity | null
   onDeposit: (amount: string) => Promise<void>
+  onSwapAndDeposit?: () => void
   isLoading?: boolean
   error?: string | null
 }
@@ -45,6 +46,7 @@ export function DepositModal({
   onClose, 
   opportunity, 
   onDeposit, 
+  onSwapAndDeposit,
   isLoading = false,
   error = null
 }: DepositModalProps) {
@@ -177,9 +179,21 @@ export function DepositModal({
           {!balance.isLoading && availableBalance <= 0 && (
             <Alert>
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                You don't have any {opportunity.token.symbol} tokens in your wallet. 
-                Please acquire some tokens before depositing.
+              <AlertDescription className="space-y-2">
+                <div>
+                  You don't have any {opportunity.token.symbol} tokens in your wallet. 
+                  You can swap your existing tokens and start earning.
+                </div>
+                {onSwapAndDeposit && (
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={onSwapAndDeposit}
+                    className="mt-2"
+                  >
+                    Swap and Deposit
+                  </Button>
+                )}
               </AlertDescription>
             </Alert>
           )}
