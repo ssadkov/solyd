@@ -6,15 +6,21 @@ import { Card } from './ui/card';
 import { Badge } from './ui/badge';
 import { Wallet, LogOut, Copy, Check } from 'lucide-react';
 import { useState } from 'react';
+import { useWalletContext } from '@/contexts/wallet-context';
 import { useWalletModal } from '@solana/wallet-adapter-react-ui';
+import { useTotalBalance } from '@/hooks/use-total-balance';
 
 export function WalletConnect() {
   const { wallet, publicKey, connected, disconnect } = useWallet();
   const { setVisible } = useWalletModal();
+  const { balance } = useWalletContext();
   const [copied, setCopied] = useState(false);
 
   const address = publicKey?.toString();
   const truncatedAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : '';
+
+  // Получаем общую сумму включая позиции в Jupiter
+  const { totalBalance, isLoading: isTotalLoading } = useTotalBalance(address);
 
   const copyAddress = async () => {
     if (address) {
@@ -83,6 +89,15 @@ export function WalletConnect() {
                   <Copy className="h-3 w-3" />
                 )}
               </Button>
+            </div>
+            {/* Total USD Value */}
+            <div className="pt-2 border-t border-border">
+              <div className="flex items-center justify-between">
+                <span className="text-xs text-muted-foreground">Total:</span>
+                <span className="text-sm font-semibold text-green-600">
+                  {isTotalLoading ? '...' : `$${totalBalance.toFixed(2)}`}
+                </span>
+              </div>
             </div>
           </div>
         )}

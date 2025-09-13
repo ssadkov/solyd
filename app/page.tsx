@@ -110,8 +110,8 @@ export default function Home() {
                         <div className="text-3xl font-bold mb-2">
                           {isEarningsLoading ? '...' : `$${totalEarningsUSD.toFixed(2)}`}
                         </div>
-                        <div className="text-sm text-muted-foreground">
-                          {isEarningsLoading ? 'Loading...' : 'Lifetime earnings'}
+                        <div className={`text-sm ${totalEarningsUSD > 0 ? 'text-muted-foreground' : 'text-primary font-medium'}`}>
+                          {isEarningsLoading ? 'Loading...' : (totalEarningsUSD > 0 ? 'Lifetime earnings' : 'Start earn today!')}
                         </div>
                       </div>
                     </div>

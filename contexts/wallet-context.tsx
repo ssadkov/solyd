@@ -19,6 +19,7 @@ interface WalletContextType {
     }>
     isLoading: boolean
     error: string | null
+    totalUsdValue?: number
   }
   refreshBalance: () => void
 }
@@ -42,6 +43,7 @@ export function WalletProvider({ children }: WalletProviderProps) {
       tokens: balance.tokens,
       isLoading: balance.isLoading,
       error: balance.error,
+      totalUsdValue: balance.totalUsdValue,
     },
     refreshBalance: balance.refreshBalance
   }

@@ -131,6 +131,7 @@ export function useWalletBalance(address: string | undefined) {
         let priceData: Record<string, any> = {};
         try {
           priceData = await JupiterPriceService.getPrices(allMints);
+          console.log('Price data received:', priceData);
         } catch (error) {
           console.warn('Failed to fetch prices from Jupiter API:', error);
         }
@@ -157,8 +158,15 @@ export function useWalletBalance(address: string | undefined) {
         const solPriceChange24h = solPriceInfo?.priceChange24h;
 
         // Рассчитываем общую стоимость портфеля
-        const totalUsdValue = (solUsdValue || 0) + 
-          tokensWithPrices.reduce((sum, token) => sum + (token.usdValue || 0), 0);
+        const tokensValue = tokensWithPrices.reduce((sum, token) => sum + (token.usdValue || 0), 0);
+        const totalUsdValue = (solUsdValue || 0) + tokensValue;
+        
+        console.log('Balance calculation:', {
+          solUsdValue,
+          tokensValue,
+          totalUsdValue,
+          tokensWithPrices: tokensWithPrices.map(t => ({ symbol: t.symbol, usdValue: t.usdValue }))
+        });
 
         setBalance({
           sol: solAmount,
