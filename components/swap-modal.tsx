@@ -15,6 +15,7 @@ import { useEnhancedOpportunities } from '@/hooks/use-enhanced-opportunities'
 import { useWalletBalance } from '@/hooks/use-wallet-balance'
 import { TokenSelector } from '@/components/token-selector'
 import { JupiterTokenService, JupiterTokenData } from '@/services/jupiter-token.service'
+import { JupiterPriceService } from '@/services/jupiter-price.service'
 
 interface SwapModalProps {
   isOpen: boolean
@@ -44,6 +45,7 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
   const [tokenData, setTokenData] = useState<JupiterTokenData[]>([])
   const [isLoadingTokens, setIsLoadingTokens] = useState(false)
   const [depositAmount, setDepositAmount] = useState<string>('')
+  const [solPrice, setSolPrice] = useState<number | null>(null)
   
   const { balance, walletAddress, refreshBalance } = useWalletContext()
   const { 
@@ -57,15 +59,16 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
   // Получаем данные о токенах от Jupiter API (как в WalletAssets)
   useEffect(() => {
     const fetchTokenData = async () => {
-      if (!walletAddress || balance.tokens.length === 0) {
+      if (!walletAddress) {
         setTokenData([])
         return
       }
 
+      // Всегда загружаем данные, даже если нет токенов (для SOL)
       setIsLoadingTokens(true)
       try {
         const allMints = [
-          'So11111111111111111111111111111111111111112', // SOL
+          'So11111111111111111111111111111111111111112', // SOL - всегда добавляем
           ...balance.tokens.map(token => token.mint)
         ]
         
@@ -82,9 +85,43 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
     fetchTokenData()
   }, [walletAddress, balance.tokens])
 
+  // Отдельно загружаем цену SOL если она не загрузилась через основной API
+  useEffect(() => {
+    const fetchSolPrice = async () => {
+      if (balance.sol > 0 && !solPrice) {
+        try {
+          const priceData = await JupiterPriceService.getPrice('So11111111111111111111111111111111111111112');
+          if (priceData) {
+            setSolPrice(priceData.usdPrice);
+          }
+        } catch (error) {
+          console.error('Failed to fetch SOL price:', error);
+        }
+      }
+    };
+
+    fetchSolPrice();
+  }, [balance.sol, solPrice])
+
   // Функция для получения данных о токене
   const getTokenInfo = (mint: string): JupiterTokenData | null => {
-    return tokenData.find(token => token.id === mint) || null
+    const tokenInfo = tokenData.find(token => token.id === mint);
+    
+    // Fallback для SOL если данные не загрузились
+    if (mint === 'So11111111111111111111111111111111111111112' && !tokenInfo) {
+      return {
+        id: 'So11111111111111111111111111111111111111112',
+        name: 'Solana',
+        symbol: 'SOL',
+        icon: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png',
+        decimals: 9,
+        usdPrice: 0, // Будет загружено отдельно
+        priceBlockId: 0,
+        isVerified: true,
+      };
+    }
+    
+    return tokenInfo || null;
   }
 
   // Создаем список токенов in из баланса кошелька (как в WalletAssets)
@@ -98,13 +135,14 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
       // Add SOL only if balance > 0
       ...(balance.sol > 0 ? (() => {
         const solTokenInfo = getTokenInfo('So11111111111111111111111111111111111111112')
-        const usdValue = solTokenInfo ? balance.sol * solTokenInfo.usdPrice : 0
+        const price = solTokenInfo?.usdPrice || solPrice || 0
+        const usdValue = price > 0 ? balance.sol * price : 0
         return [{
           symbol: 'SOL',
           address: 'So11111111111111111111111111111111111111112',
           decimals: 9,
           logo: solTokenInfo?.icon || 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png',
-          price: solTokenInfo?.usdPrice || 0,
+          price: price,
           balance: balance.sol || 0,
           usdValue: usdValue || 0,
         }]
@@ -131,7 +169,7 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
       token.price > 0 &&
       token.symbol !== 'Unknown'
     ).sort((a, b) => b.usdValue - a.usdValue) // Сортируем по USD стоимости
-  }, [walletAddress, balance.isLoading, balance.sol, balance.tokens, tokenData, isLoadingTokens, getTokenInfo])
+  }, [walletAddress, balance.isLoading, balance.sol, balance.tokens, tokenData, isLoadingTokens, solPrice])
 
   // Создаем список токенов out из opportunities
   const tokenOutOptions: TokenOption[] = useMemo(() => {
