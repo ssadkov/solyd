@@ -6,7 +6,8 @@ import { Button } from './ui/button';
 import { AlertCircle, Coins, Copy, Check, Send } from 'lucide-react';
 import { useWalletContext } from '@/contexts/wallet-context';
 import { SendAssetModal } from './send-asset-modal';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { JupiterTokenService, JupiterTokenData } from '@/services/jupiter-token.service';
 
 interface WalletAssetsProps {
   address: string;
@@ -18,6 +19,8 @@ export function WalletAssets({ address }: WalletAssetsProps) {
   const [copiedMint, setCopiedMint] = useState<string | null>(null);
   const [sendModalOpen, setSendModalOpen] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState<any>(null);
+  const [tokenData, setTokenData] = useState<JupiterTokenData[]>([]);
+  const [isLoadingTokens, setIsLoadingTokens] = useState(false);
 
   const copyMintAddress = async (mint: string) => {
     await navigator.clipboard.writeText(mint);
@@ -33,6 +36,39 @@ export function WalletAssets({ address }: WalletAssetsProps) {
   const handleCloseModal = () => {
     setSendModalOpen(false);
     setSelectedAsset(null);
+  };
+
+  // Получаем данные о токенах от Jupiter API
+  useEffect(() => {
+    const fetchTokenData = async () => {
+      if (tokens.length === 0) {
+        setTokenData([]);
+        return;
+      }
+
+      setIsLoadingTokens(true);
+      try {
+        const allMints = [
+          'So11111111111111111111111111111111111111112', // SOL
+          ...tokens.map(token => token.mint)
+        ];
+        
+        const data = await JupiterTokenService.getTokens(allMints);
+        setTokenData(data);
+      } catch (error) {
+        console.error('Failed to fetch token data:', error);
+        setTokenData([]);
+      } finally {
+        setIsLoadingTokens(false);
+      }
+    };
+
+    fetchTokenData();
+  }, [tokens]);
+
+  // Функция для получения данных о токене
+  const getTokenInfo = (mint: string): JupiterTokenData | null => {
+    return tokenData.find(token => token.id === mint) || null;
   };
 
   if (error) {
@@ -83,26 +119,40 @@ export function WalletAssets({ address }: WalletAssetsProps) {
     );
   }
 
-  // Combine SOL (if > 0) and tokens
+  // Combine SOL (if > 0) and tokens with Jupiter API data
   const allAssets = [
     // Add SOL only if balance > 0
-    ...(sol > 0 ? [{
-      symbol: 'SOL',
-      balance: sol.toFixed(2),
-      value: `${sol.toFixed(2)} SOL`,
-      mint: 'So11111111111111111111111111111111111111112',
-      logo: undefined,
-      decimals: 9, // SOL has 9 decimals
-    }] : []),
+    ...(sol > 0 ? (() => {
+      const solTokenInfo = getTokenInfo('So11111111111111111111111111111111111111112');
+      const usdValue = solTokenInfo ? sol * solTokenInfo.usdPrice : undefined;
+      return [{
+        symbol: 'SOL',
+        balance: sol.toFixed(4),
+        value: usdValue ? `$${usdValue.toFixed(2)}` : `${sol.toFixed(4)} SOL`,
+        mint: 'So11111111111111111111111111111111111111112',
+        logo: solTokenInfo?.icon,
+        decimals: 9,
+        usdPrice: solTokenInfo?.usdPrice,
+        priceChange24h: solTokenInfo?.stats24h?.priceChange,
+        isVerified: solTokenInfo?.isVerified,
+      }];
+    })() : []),
     // Add tokens
-    ...tokens.map(token => ({
-      symbol: token.symbol || `${token.mint.slice(0, 4)}...`,
-      balance: token.uiAmount.toFixed(2),
-      value: `${token.uiAmount.toFixed(2)}`,
-      mint: token.mint,
-      logo: token.logo,
-      decimals: token.decimals, // Use actual token decimals
-    }))
+    ...tokens.map(token => {
+      const tokenInfo = getTokenInfo(token.mint);
+      const usdValue = tokenInfo ? token.uiAmount * tokenInfo.usdPrice : undefined;
+      return {
+        symbol: tokenInfo?.symbol || token.symbol || `${token.mint.slice(0, 4)}...`,
+        balance: token.uiAmount.toFixed(4),
+        value: usdValue ? `$${usdValue.toFixed(2)}` : `${token.uiAmount.toFixed(4)}`,
+        mint: token.mint,
+        logo: tokenInfo?.icon || token.logo,
+        decimals: token.decimals,
+        usdPrice: tokenInfo?.usdPrice,
+        priceChange24h: tokenInfo?.stats24h?.priceChange,
+        isVerified: tokenInfo?.isVerified,
+      };
+    })
   ];
 
   if (allAssets.length === 0) {
@@ -140,7 +190,12 @@ export function WalletAssets({ address }: WalletAssetsProps) {
                       ?
                     </div>
                   )}
-                  <div className="font-medium">{asset.symbol}</div>
+                  <div className="flex items-center gap-1">
+                    <div className="font-medium">{asset.symbol}</div>
+                    {asset.isVerified && (
+                      <div className="w-2 h-2 bg-green-500 rounded-full" title="Verified token" />
+                    )}
+                  </div>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -154,10 +209,18 @@ export function WalletAssets({ address }: WalletAssetsProps) {
                     )}
                   </Button>
                 </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {asset.balance} {asset.symbol}
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 <div className="text-right">
                   <div className="font-bold text-lg">{asset.value}</div>
+                  {asset.priceChange24h !== undefined && (
+                    <div className={`text-xs ${asset.priceChange24h >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {asset.priceChange24h >= 0 ? '+' : ''}{asset.priceChange24h.toFixed(2)}%
+                    </div>
+                  )}
                 </div>
                 <Button
                   variant="ghost"

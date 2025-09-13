@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Connection, PublicKey, LAMPORTS_PER_SOL } from '@solana/web3.js';
 import { SOLANA_CONFIG } from '@/lib/solana-config';
+import { JupiterPriceService } from '@/services/jupiter-price.service';
 
 export interface TokenBalance {
   mint: string;
@@ -11,6 +12,11 @@ export interface TokenBalance {
   uiAmount: number;
   symbol?: string;
   logo?: string;
+  // Jupiter Price API data
+  usdPrice?: number;
+  usdValue?: number;
+  priceChange24h?: number;
+  blockId?: number;
 }
 
 export interface WalletBalance {
@@ -18,6 +24,11 @@ export interface WalletBalance {
   tokens: TokenBalance[];
   isLoading: boolean;
   error: string | null;
+  // USD values
+  solUsdPrice?: number;
+  solUsdValue?: number;
+  solPriceChange24h?: number;
+  totalUsdValue?: number;
 }
 
 export function useWalletBalance(address: string | undefined) {
@@ -26,11 +37,24 @@ export function useWalletBalance(address: string | undefined) {
     tokens: [],
     isLoading: false,
     error: null,
+    solUsdPrice: undefined,
+    solUsdValue: undefined,
+    solPriceChange24h: undefined,
+    totalUsdValue: undefined,
   });
 
   useEffect(() => {
     if (!address) {
-      setBalance({ sol: 0, tokens: [], isLoading: false, error: null });
+      setBalance({ 
+        sol: 0, 
+        tokens: [], 
+        isLoading: false, 
+        error: null,
+        solUsdPrice: undefined,
+        solUsdValue: undefined,
+        solPriceChange24h: undefined,
+        totalUsdValue: undefined,
+      });
       return;
     }
 
@@ -96,11 +120,53 @@ export function useWalletBalance(address: string | undefined) {
           }
         }
 
+        // Получаем цены для всех токенов + SOL
+        const allMints = [
+          'So11111111111111111111111111111111111111112', // SOL
+          ...tokens.map(token => token.mint)
+        ];
+
+        let priceData: Record<string, any> = {};
+        try {
+          priceData = await JupiterPriceService.getPrices(allMints);
+        } catch (error) {
+          console.warn('Failed to fetch prices from Jupiter API:', error);
+        }
+
+        // Обновляем токены с ценовой информацией
+        const tokensWithPrices = tokens.map(token => {
+          const priceInfo = priceData[token.mint];
+          if (priceInfo) {
+            return {
+              ...token,
+              usdPrice: priceInfo.usdPrice,
+              usdValue: token.uiAmount * priceInfo.usdPrice,
+              priceChange24h: priceInfo.priceChange24h,
+              blockId: priceInfo.blockId,
+            };
+          }
+          return token;
+        });
+
+        // Получаем данные для SOL
+        const solPriceInfo = priceData['So11111111111111111111111111111111111111112'];
+        const solUsdPrice = solPriceInfo?.usdPrice;
+        const solUsdValue = solUsdPrice ? solAmount * solUsdPrice : undefined;
+        const solPriceChange24h = solPriceInfo?.priceChange24h;
+
+        // Рассчитываем общую стоимость портфеля
+        const totalUsdValue = (solUsdValue || 0) + 
+          tokensWithPrices.reduce((sum, token) => sum + (token.usdValue || 0), 0);
+
         setBalance({
           sol: solAmount,
-          tokens,
+          tokens: tokensWithPrices,
           isLoading: false,
           error: null,
+          solUsdPrice,
+          solUsdValue,
+          solPriceChange24h,
+          totalUsdValue,
         });
       } catch (error) {
         console.error('Error fetching wallet balance:', error);
