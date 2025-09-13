@@ -4,6 +4,7 @@ import { Connection, PublicKey, Transaction } from '@solana/web3.js'
 
 interface UseDepositReturn {
   deposit: (asset: string, amount: string) => Promise<string>
+  getDepositInstructions: (asset: string, amount: string, signer: string) => Promise<any>
   isLoading: boolean
   error: string | null
 }
@@ -12,6 +13,68 @@ export function useDeposit(): UseDepositReturn {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { publicKey, signTransaction } = useWallet()
+
+  const getDepositInstructions = async (asset: string, amount: string, signer: string): Promise<any> => {
+    try {
+      // Validate parameters
+      if (!asset || !amount || !signer) {
+        throw new Error('Missing required parameters: asset, amount, signer')
+      }
+
+      // Validate Solana address format
+      const solanaAddressRegex = /^[1-9A-HJ-NP-Za-km-z]{32,44}$/
+      if (!solanaAddressRegex.test(asset) || !solanaAddressRegex.test(signer)) {
+        throw new Error('Invalid Solana address format')
+      }
+
+      // Validate amount is a positive integer string (base units)
+      const amountStr = amount.toString().trim()
+      if (!/^\d+$/.test(amountStr)) {
+        throw new Error('Invalid amount - must be a positive integer string (base units)')
+      }
+
+      const amountNum = parseInt(amountStr)
+      if (isNaN(amountNum) || amountNum <= 0) {
+        throw new Error('Invalid amount - must be a positive integer')
+      }
+
+      console.log('Requesting deposit instructions:', {
+        asset,
+        amount: amountStr,
+        signer,
+        amountType: typeof amountStr,
+        amountValue: amountNum,
+        note: 'Amount in base units (no decimal point)'
+      })
+
+      const response = await fetch('https://lite-api.jup.ag/lend/v1/earn/deposit-instructions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+          asset,
+          signer,
+          amount: amountStr, // Send as integer string in base units
+        }),
+      })
+
+      if (!response.ok) {
+        const errorText = await response.text()
+        console.error('Jupiter deposit instructions API error:', errorText)
+        throw new Error(`Failed to get deposit instructions: ${response.status} ${response.statusText}`)
+      }
+
+      const data = await response.json()
+      console.log('Jupiter deposit instructions response:', data)
+      
+      return data
+    } catch (err) {
+      console.error('Error getting deposit instructions:', err)
+      throw err
+    }
+  }
 
   const deposit = async (asset: string, amount: string): Promise<string> => {
     if (!publicKey || !signTransaction) {
@@ -117,5 +180,5 @@ export function useDeposit(): UseDepositReturn {
     }
   }
 
-  return { deposit, isLoading, error }
+  return { deposit, getDepositInstructions, isLoading, error }
 }

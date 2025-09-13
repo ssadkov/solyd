@@ -6,10 +6,11 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, AlertCircle, CheckCircle, Wallet, TrendingUp } from 'lucide-react'
+import { Loader2, AlertCircle, CheckCircle, Wallet } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
 import { useWalletContext } from '@/contexts/wallet-context'
 import { useSwap } from '@/hooks/use-swap'
+import { useDeposit } from '@/hooks/use-deposit'
 import { useEnhancedOpportunities } from '@/hooks/use-enhanced-opportunities'
 import { useWalletBalance } from '@/hooks/use-wallet-balance'
 import { TokenSelector } from '@/components/token-selector'
@@ -36,10 +37,12 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
   const [selectedTokenIn, setSelectedTokenIn] = useState<TokenOption | null>(null)
   const [selectedTokenOut, setSelectedTokenOut] = useState<TokenOption | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [swapStep, setSwapStep] = useState<'quote' | 'confirm' | 'executing' | 'success'>('quote')
+  const [swapStep, setSwapStep] = useState<'quote' | 'confirm' | 'executing' | 'depositing' | 'success'>('quote')
   const [transactionSignature, setTransactionSignature] = useState<string | null>(null)
+  const [depositSignature, setDepositSignature] = useState<string | null>(null)
   const [tokenData, setTokenData] = useState<JupiterTokenData[]>([])
   const [isLoadingTokens, setIsLoadingTokens] = useState(false)
+  const [depositAmount, setDepositAmount] = useState<string>('')
   
   const { balance, walletAddress, refreshBalance } = useWalletContext()
   const { 
@@ -48,6 +51,7 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
   } = useWalletBalance(walletAddress)
   const { opportunities } = useEnhancedOpportunities(walletAddress)
   const { quote, isLoading, error, getQuote, getSwapInstructions, executeSwap, clearQuote } = useSwap()
+  const { deposit, isLoading: isDepositLoading, error: depositError } = useDeposit()
 
   // Получаем данные о токенах от Jupiter API (как в WalletAssets)
   useEffect(() => {
@@ -230,8 +234,8 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
       setIsSubmitting(true)
       
       try {
-        if (!quote || !walletAddress) {
-          throw new Error('Missing quote or wallet address')
+        if (!quote || !walletAddress || !selectedTokenOut) {
+          throw new Error('Missing quote, wallet address, or output token')
         }
 
         // Получаем swap instructions
@@ -258,9 +262,30 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
         refreshBalance()
         
         setTransactionSignature(signature)
+        
+        // Используем количество из quote для deposit
+        const humanAmount = (parseInt(quote.outAmount) / Math.pow(10, selectedTokenOut.decimals)).toString()
+        setDepositAmount(humanAmount)
+        
+        console.log('Swap completed, starting deposit:', {
+          token: selectedTokenOut.symbol,
+          amount: humanAmount,
+          rawAmount: quote.outAmount
+        })
+        
+        // Переходим к этапу deposit
+        setSwapStep('depositing')
+        
+        // Выполняем deposit
+        const depositSig = await deposit(selectedTokenOut.address, quote.outAmount)
+        setDepositSignature(depositSig)
+        
+        // Обновляем баланс после deposit
+        refreshBalance()
+        
         setSwapStep('success')
       } catch (err) {
-        console.error('Swap failed:', err)
+        console.error('Swap or deposit failed:', err)
         setSwapStep('confirm')
       } finally {
         setIsSubmitting(false)
@@ -274,6 +299,8 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
     setSelectedTokenOut(null)
     setSwapStep('quote')
     setTransactionSignature(null)
+    setDepositSignature(null)
+    setDepositAmount('')
     clearQuote()
     onClose()
   }
@@ -448,7 +475,7 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
               {quote && selectedTokenOut && (
                 <div className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-1 text-green-600">
-                    <TrendingUp className="w-3 h-3" />
+                    <CheckCircle className="w-3 h-3" />
                     {selectedTokenOut.apy?.toFixed(2)}% APY
                   </div>
                   <div className="text-blue-600 font-medium">
@@ -509,44 +536,25 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
                   )}
                 </Button>
               ) : (
-                <>
-                  <Button
-                    type="button"
-                    onClick={() => {
-                      // TODO: Implement swap and deposit functionality
-                      console.log('Swap and deposit clicked')
-                    }}
-                    disabled={isLoading || isSubmitting}
-                    className="flex-1"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Executing...
-                      </>
-                    ) : (
-                      <>
-                        <CheckCircle className="w-4 h-4 mr-2" />
-                        Swap and Deposit
-                      </>
-                    )}
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={isLoading || isSubmitting}
-                    className="flex-1"
-                    variant="outline"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                        Executing Swap...
-                      </>
-                    ) : (
-                      'Swap'
-                    )}
-                  </Button>
-                </>
+                <Button
+                  type="submit"
+                  disabled={isLoading || isSubmitting || isDepositLoading}
+                  className="w-full"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      {swapStep === 'executing' ? 'Executing Swap...' : 
+                       swapStep === 'depositing' ? 'Depositing...' : 
+                       'Processing...'}
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                      Swap & Deposit
+                    </>
+                  )}
+                </Button>
               )}
             </div>
           </form>
@@ -572,36 +580,58 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
               {/* Main Message */}
               <div className="space-y-2">
                 <h2 className="text-2xl font-bold text-green-600">
-                  Swap Successful!
+                  Swap & Deposit Successful!
                 </h2>
                 <p className="text-lg text-muted-foreground">
                   <span className="font-semibold text-foreground">{amount} {selectedTokenIn?.symbol}</span>
                   {' '}swapped for{' '}
                   <span className="font-semibold text-foreground">
-                    {quote ? formatTokenAmount(parseInt(quote.outAmount), selectedTokenOut?.decimals || 9) : '0'} {selectedTokenOut?.symbol}
+                    {depositAmount} {selectedTokenOut?.symbol}
                   </span>
+                  {' '}and deposited successfully!
                 </p>
               </div>
 
-              {/* Transaction Link */}
-              {transactionSignature && (
-                <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 w-full">
-                  <div className="flex items-center justify-center gap-2 mb-2">
-                    <CheckCircle className="w-5 h-5 text-blue-600" />
-                    <span className="font-semibold text-blue-700 dark:text-blue-300">
-                      Transaction Complete
-                    </span>
+              {/* Transaction Links */}
+              <div className="space-y-3 w-full">
+                {transactionSignature && (
+                  <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <CheckCircle className="w-5 h-5 text-blue-600" />
+                      <span className="font-semibold text-blue-700 dark:text-blue-300">
+                        Swap Transaction
+                      </span>
+                    </div>
+                    <a
+                      href={`https://solscan.io/tx/${transactionSignature}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
+                    >
+                      View on Solscan: {transactionSignature.slice(0, 8)}...{transactionSignature.slice(-8)}
+                    </a>
                   </div>
-                  <a
-                    href={`https://solscan.io/tx/${transactionSignature}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
-                  >
-                    View on Solscan: {transactionSignature.slice(0, 8)}...{transactionSignature.slice(-8)}
-                  </a>
-                </div>
-              )}
+                )}
+                
+                {depositSignature && (
+                  <div className="bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                      <CheckCircle className="w-5 h-5 text-green-600" />
+                      <span className="font-semibold text-green-700 dark:text-green-300">
+                        Deposit Transaction
+                      </span>
+                    </div>
+                    <a
+                      href={`https://solscan.io/tx/${depositSignature}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-green-600 dark:text-green-400 hover:underline break-all"
+                    >
+                      View on Solscan: {depositSignature.slice(0, 8)}...{depositSignature.slice(-8)}
+                    </a>
+                  </div>
+                )}
+              </div>
 
               {/* Close Button */}
               <button

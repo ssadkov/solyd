@@ -25,13 +25,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Validate amount is positive
-    const amount = parseFloat(body.amount)
+    // Validate amount is positive integer (base units)
+    const amountStr = body.amount.toString().trim()
+    if (!/^\d+$/.test(amountStr)) {
+      return NextResponse.json(
+        { 
+          success: false, 
+          error: 'Invalid amount. Must be a positive integer string (base units).' 
+        },
+        { status: 400 }
+      )
+    }
+    
+    const amount = parseInt(amountStr)
     if (isNaN(amount) || amount <= 0) {
       return NextResponse.json(
         { 
           success: false, 
-          error: 'Invalid amount. Must be a positive number.' 
+          error: 'Invalid amount. Must be a positive integer.' 
         },
         { status: 400 }
       )
@@ -59,7 +70,7 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify({
         asset: body.asset,
         signer: body.signer,
-        amount: body.amount,
+        amount: amountStr, // Send as integer string in base units
       }),
     })
 
@@ -94,7 +105,7 @@ export async function POST(request: NextRequest) {
         transaction: jupiterData.transaction,
         asset: body.asset,
         signer: body.signer,
-        amount: body.amount,
+        amount: amountStr,
       },
       timestamp: new Date().toISOString(),
     })
