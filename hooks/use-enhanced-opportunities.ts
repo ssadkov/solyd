@@ -28,34 +28,35 @@ export function useEnhancedOpportunities(walletAddress: string | undefined): Use
   const [isLoadingTokens, setIsLoadingTokens] = useState(false)
 
   const fetchData = useCallback(async () => {
-    if (!walletAddress) {
-      setOpportunities([])
-      setIsLoading(false)
-      setError(null)
-      return
-    }
-
     setIsLoading(true)
     setError(null)
 
     try {
-      // Загружаем данные параллельно
-      const [poolsResponse, positionsResponse] = await Promise.all([
-        fetch('/api/aggregator'),
-        fetch(`/api/user-positions?address=${walletAddress}`)
-      ])
+      // Загружаем данные пулов всегда
+      const poolsResponse = await fetch('/api/aggregator')
+      const poolsData = await poolsResponse.json()
 
-      const [poolsData, positionsData] = await Promise.all([
-        poolsResponse.json(),
-        positionsResponse.json()
-      ])
-
-      if (!poolsData.success || !positionsData.success) {
-        throw new Error('Failed to fetch data')
+      if (!poolsData.success) {
+        throw new Error('Failed to fetch pools data')
       }
 
       const pools: AggregatorData[] = poolsData.data
-      const positions: UserPosition[] = positionsData.data
+
+      // Загружаем позиции пользователя только если кошелек подключен
+      let positions: UserPosition[] = []
+      if (walletAddress) {
+        try {
+          const positionsResponse = await fetch(`/api/user-positions?address=${walletAddress}`)
+          const positionsData = await positionsResponse.json()
+          
+          if (positionsData.success) {
+            positions = positionsData.data
+          }
+        } catch (positionError) {
+          console.warn('Failed to fetch user positions:', positionError)
+          // Продолжаем без позиций пользователя
+        }
+      }
 
       // Загружаем данные о токенах через Jupiter API
       setIsLoadingTokens(true)
@@ -106,10 +107,17 @@ export function useEnhancedOpportunities(walletAddress: string | undefined): Use
     }
   }, [walletAddress])
 
-  // Автоматическая загрузка при изменении адреса кошелька
+  // Автоматическая загрузка при монтировании и изменении адреса кошелька
   useEffect(() => {
     fetchData()
   }, [fetchData])
+
+  // Дополнительная загрузка при изменении адреса кошелька (для обновления позиций)
+  useEffect(() => {
+    if (walletAddress) {
+      fetchData()
+    }
+  }, [walletAddress, fetchData])
 
   // Вычисляемые значения
   const totalInvested = opportunities.reduce((sum, opp) => 
