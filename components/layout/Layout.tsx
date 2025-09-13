@@ -1,6 +1,5 @@
 import Sidebar from './Sidebar'
 import Dashboard from './Dashboard'
-import HelpPanel from './HelpPanel'
 
 export default function Layout() {
   return (
@@ -8,12 +7,9 @@ export default function Layout() {
       {/* Left Sidebar */}
       <Sidebar />
       
-      {/* Main Dashboard Area */}
+      {/* Main Dashboard Area - Full Width */}
       <div className="flex-1 flex">
         <Dashboard />
-        
-        {/* Right Help Panel */}
-        <HelpPanel />
       </div>
     </div>
   )

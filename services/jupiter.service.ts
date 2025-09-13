@@ -1,4 +1,4 @@
-import { JupiterPool, JupiterUserPosition } from '@/types/jupiter'
+import { JupiterPool, JupiterUserPosition, JupiterEarnings, JupiterEarningsExtended } from '@/types/jupiter'
 import { AggregatorData } from '@/types/aggregator'
 import { ProtocolService, UserPosition, ProtocolTransaction } from '@/types/protocol'
 
@@ -108,6 +108,40 @@ export class JupiterService implements ProtocolService {
     }
   }
 
+  async getEarnings(walletAddress: string, positionAddresses: string[]): Promise<JupiterEarningsExtended[]> {
+    try {
+      if (positionAddresses.length === 0) {
+        return []
+      }
+
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), this.timeout)
+
+      // Кодируем адреса позиций для URL
+      const encodedPositions = positionAddresses.map(addr => encodeURIComponent(addr)).join(',')
+      
+      const response = await fetch(`${this.baseUrl}/earn/earnings?user=${walletAddress}&positions=${encodedPositions}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+
+      const data: JupiterEarnings[] = await response.json()
+      return this.parseEarnings(data)
+    } catch (error) {
+      console.error('Error fetching Jupiter earnings:', error)
+      throw new Error('Failed to fetch Jupiter earnings')
+    }
+  }
+
   async supply(tokenAddress: string, amount: string, walletAddress: string): Promise<ProtocolTransaction> {
     // TODO: Implement Jupiter supply transaction
     throw new Error('Supply functionality not implemented yet')
@@ -165,6 +199,7 @@ export class JupiterService implements ProtocolService {
           totalValue,
           withdrawable,
           lastUpdated: new Date().toISOString(),
+          jupiterTokenAddress: position.token.address, // Сохраняем адрес Jupiter токена
         }
       })
   }
@@ -188,6 +223,20 @@ export class JupiterService implements ProtocolService {
     
     // Fallback to underlying balance
     return position.underlyingBalance || '0'
+  }
+
+  private parseEarnings(earnings: JupiterEarnings[]): JupiterEarningsExtended[] {
+    return earnings.map(earning => {
+      // Для расчета USD значения нам нужна информация о токене
+      // Пока что возвращаем базовые данные, USD расчет будет в хуке
+      return {
+        ...earning,
+        earningsValueUSD: 0, // Будет рассчитано в хуке
+        tokenSymbol: '', // Будет заполнено в хуке
+        tokenDecimals: 0, // Будет заполнено в хуке
+        tokenPrice: '0', // Будет заполнено в хуке
+      }
+    })
   }
 
   // Legacy method for backward compatibility

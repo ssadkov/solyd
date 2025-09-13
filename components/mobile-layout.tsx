@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { DefiCards } from '@/components/defi-cards'
 import { useAggregatorData } from '@/hooks/use-aggregator-data'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
@@ -36,8 +35,6 @@ export default function MobileLayout() {
         </p>
       </div>
 
-      {/* DeFi Cards */}
-      <DefiCards data={aggregatorData} isLoading={isLoading} />
 
       {/* Earning Opportunities */}
       <div className="mt-6">

@@ -65,3 +65,24 @@ export interface JupiterUserPositionExtended {
   withdrawable: string
   isActive: boolean
 }
+
+// Типы для earnings API
+export interface JupiterEarnings {
+  address: string
+  ownerAddress: string
+  totalDeposits: string
+  totalWithdraws: string
+  totalBalance: string
+  totalAssets: string
+  earnings: string
+  updatedAt: string
+  updatedAtSlot: number
+}
+
+// Расширенный интерфейс для earnings с вычисляемыми полями
+export interface JupiterEarningsExtended extends JupiterEarnings {
+  earningsValueUSD: number
+  tokenSymbol: string
+  tokenDecimals: number
+  tokenPrice: string
+}

@@ -15,6 +15,8 @@ export interface UserPosition {
   totalValue: number
   withdrawable: string
   lastUpdated: string
+  // Дополнительные поля для Jupiter
+  jupiterTokenAddress?: string // Адрес Jupiter токена для earnings API
 }
 
 // Интерфейс для транзакций

@@ -145,7 +145,7 @@ export function TokenSelector({
                         {token.apy.toFixed(2)}% APY
                       </span>
                     )}
-                    {token.usdValue > 0 && (
+                    {token.usdValue && token.usdValue > 0 && (
                       <div className="text-xs text-muted-foreground">
                         <div>${token.usdValue.toFixed(2)}</div>
                         {token.price > 0 && (
