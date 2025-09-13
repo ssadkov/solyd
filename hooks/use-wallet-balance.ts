@@ -43,6 +43,8 @@ export function useWalletBalance(address: string | undefined) {
     totalUsdValue: undefined,
   });
 
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
   useEffect(() => {
     if (!address) {
       setBalance({ 
@@ -179,9 +181,13 @@ export function useWalletBalance(address: string | undefined) {
     };
 
     fetchBalance();
-  }, [address]);
+  }, [address, refreshTrigger]);
 
-  return balance;
+  const refreshBalance = () => {
+    setRefreshTrigger(prev => prev + 1);
+  };
+
+  return { ...balance, refreshBalance };
 }
 
 // Helper function to get token logo

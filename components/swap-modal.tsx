@@ -41,13 +41,13 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
   const [tokenData, setTokenData] = useState<JupiterTokenData[]>([])
   const [isLoadingTokens, setIsLoadingTokens] = useState(false)
   
-  const { balance, walletAddress } = useWalletContext()
+  const { balance, walletAddress, refreshBalance } = useWalletContext()
   const { 
     solUsdPrice, 
     solUsdValue 
   } = useWalletBalance(walletAddress)
   const { opportunities } = useEnhancedOpportunities(walletAddress)
-  const { quote, isLoading, error, getQuote, clearQuote } = useSwap()
+  const { quote, isLoading, error, getQuote, getSwapInstructions, executeSwap, clearQuote } = useSwap()
 
   // Получаем данные о токенах от Jupiter API (как в WalletAssets)
   useEffect(() => {
@@ -225,17 +225,39 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
         setIsSubmitting(false)
       }
     } else if (swapStep === 'confirm') {
-      // Выполняем swap (заглушка)
+      // Выполняем реальный swap
       setSwapStep('executing')
       setIsSubmitting(true)
       
       try {
-        // Заглушка - имитируем выполнение swap
-        await new Promise(resolve => setTimeout(resolve, 2000))
+        if (!quote || !walletAddress) {
+          throw new Error('Missing quote or wallet address')
+        }
+
+        // Получаем swap instructions
+        const instructions = await getSwapInstructions({
+          quoteResponse: quote,
+          userPublicKey: walletAddress,
+          wrapAndUnwrapSol: true,
+          useSharedAccounts: true,
+          dynamicComputeUnitLimit: true,
+          prioritizationFeeLamports: "auto"
+        })
+
+        console.log('Received swap instructions:', instructions)
+
+        // Проверяем структуру инструкций
+        if (!instructions) {
+          throw new Error('No instructions received from Jupiter API')
+        }
+
+        // Выполняем swap
+        const signature = await executeSwap(instructions, walletAddress)
         
-        // Заглушка - случайная подпись транзакции
-        const mockSignature = '5' + 'x'.repeat(87)
-        setTransactionSignature(mockSignature)
+        // Обновляем баланс после успешного swap
+        refreshBalance()
+        
+        setTransactionSignature(signature)
         setSwapStep('success')
       } catch (err) {
         console.error('Swap failed:', err)

@@ -20,6 +20,7 @@ interface WalletContextType {
     isLoading: boolean
     error: string | null
   }
+  refreshBalance: () => void
 }
 
 const WalletContext = createContext<WalletContextType | undefined>(undefined)
@@ -41,7 +42,8 @@ export function WalletProvider({ children }: WalletProviderProps) {
       tokens: balance.tokens,
       isLoading: balance.isLoading,
       error: balance.error,
-    }
+    },
+    refreshBalance: balance.refreshBalance
   }
 
   return (
