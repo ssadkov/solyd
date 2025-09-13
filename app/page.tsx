@@ -7,6 +7,7 @@ import { SwapModal } from "@/components/swap-modal"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { useAggregatorData } from "@/hooks/use-aggregator-data"
 import { useEnhancedOpportunities } from "@/hooks/use-enhanced-opportunities"
+import { usePublicOpportunities } from "@/hooks/use-public-opportunities"
 import { useLendPositions } from "@/hooks/use-lend-positions"
 import { useEarnings } from "@/hooks/use-earnings"
 import { useWallet } from '@solana/wallet-adapter-react'
@@ -21,7 +22,7 @@ import { useState, useMemo } from 'react'
 export default function Home() {
   const isMobile = useIsMobile()
   const { data: aggregatorData, isLoading, error } = useAggregatorData()
-  const { publicKey } = useWallet()
+  const { publicKey, connected } = useWallet()
   const walletAddress = publicKey?.toString()
   const [isSwapModalOpen, setIsSwapModalOpen] = useState(false)
   const [presetTokenOut, setPresetTokenOut] = useState<{
@@ -33,12 +34,24 @@ export default function Home() {
     apy?: number
   } | undefined>(undefined)
   
-  // Используем новый хук для получения объединенных данных
+  // Загружаем публичные возможности (доступны без подключения кошелька)
+  const { 
+    opportunities: publicOpportunities, 
+    isLoading: isPublicLoading, 
+    error: publicError 
+  } = usePublicOpportunities()
+  
+  // Используем enhanced возможности только если кошелек подключен
   const { 
     opportunities: enhancedOpportunities, 
     isLoading: isEnhancedLoading, 
     error: enhancedError 
   } = useEnhancedOpportunities(walletAddress)
+  
+  // Выбираем какие возможности показывать
+  const opportunities = connected ? enhancedOpportunities : publicOpportunities
+  const isOpportunitiesLoading = connected ? isEnhancedLoading : isPublicLoading
+  const opportunitiesError = connected ? enhancedError : publicError
 
   // Получаем позиции пользователя для расчета earnings
   const { positions } = useLendPositions(walletAddress)
@@ -127,10 +140,10 @@ export default function Home() {
                     </div>
                   </div>
                   
-                  {/* Enhanced Earning Opportunities Grid with more spacing */}
+                  {/* Earning Opportunities Grid with more spacing */}
                   <div className="px-6 lg:px-8">
                     <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-                      {isEnhancedLoading ? (
+                      {isOpportunitiesLoading ? (
                         // Loading skeleton
                         [...Array(6)].map((_, index) => (
                           <div key={index} className="bg-card border rounded-lg p-6 animate-pulse">
@@ -151,20 +164,20 @@ export default function Home() {
                             <div className="h-8 bg-muted rounded w-full"></div>
                           </div>
                         ))
-                      ) : enhancedError ? (
+                      ) : opportunitiesError ? (
                         // Error state
                         <div className="col-span-full bg-destructive/10 border border-destructive/20 rounded-lg p-8 text-center">
                           <p className="text-destructive text-lg">Failed to load opportunities</p>
-                          <p className="text-sm text-muted-foreground mt-2">{enhancedError}</p>
+                          <p className="text-sm text-muted-foreground mt-2">{opportunitiesError}</p>
                         </div>
-                      ) : enhancedOpportunities.length === 0 ? (
+                      ) : opportunities.length === 0 ? (
                         // Empty state
                         <div className="col-span-full bg-muted/50 border rounded-lg p-8 text-center">
                           <p className="text-muted-foreground text-lg">No opportunities available</p>
                         </div>
                       ) : (
-                        // Enhanced opportunity cards
-                        enhancedOpportunities.slice(0, 6).map((opportunity, index) => (
+                        // Opportunity cards
+                        opportunities.slice(0, 6).map((opportunity, index) => (
                           <EnhancedOpportunityCard
                             key={index}
                             opportunity={opportunity}

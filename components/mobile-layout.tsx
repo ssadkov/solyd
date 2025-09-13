@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react'
 import { useAggregatorData } from '@/hooks/use-aggregator-data'
 import { useEnhancedOpportunities } from '@/hooks/use-enhanced-opportunities'
+import { usePublicOpportunities } from '@/hooks/use-public-opportunities'
 import { useLendPositions } from '@/hooks/use-lend-positions'
 import { useEarnings } from '@/hooks/use-earnings'
 import { Button } from '@/components/ui/button'
@@ -42,12 +43,24 @@ export default function MobileLayout() {
   const address = publicKey?.toString()
   const truncatedAddress = address ? `${address.slice(0, 6)}...${address.slice(-4)}` : ''
   
-  // Enhanced opportunities data
+  // Загружаем публичные возможности (доступны без подключения кошелька)
+  const { 
+    opportunities: publicOpportunities, 
+    isLoading: isPublicLoading, 
+    error: publicError 
+  } = usePublicOpportunities()
+  
+  // Enhanced opportunities data (только если кошелек подключен)
   const { 
     opportunities: enhancedOpportunities, 
     isLoading: isEnhancedLoading, 
     error: enhancedError 
   } = useEnhancedOpportunities(address)
+  
+  // Выбираем какие возможности показывать
+  const opportunities = connected ? enhancedOpportunities : publicOpportunities
+  const isOpportunitiesLoading = connected ? isEnhancedLoading : isPublicLoading
+  const opportunitiesError = connected ? enhancedError : publicError
 
   // Получаем позиции пользователя для расчета earnings
   const { positions } = useLendPositions(address)
@@ -192,7 +205,7 @@ export default function MobileLayout() {
       <div className="mt-6">
         <h2 className="text-lg font-semibold mb-4">Enhanced Opportunities</h2>
         <div className="space-y-4">
-          {isEnhancedLoading ? (
+          {isOpportunitiesLoading ? (
             // Loading skeleton
             [...Array(3)].map((_, index) => (
               <Card key={index} className="p-4 animate-pulse">
@@ -213,12 +226,17 @@ export default function MobileLayout() {
                 <div className="h-10 bg-muted rounded w-full"></div>
               </Card>
             ))
-          ) : enhancedOpportunities.length === 0 ? (
+          ) : opportunitiesError ? (
+            <Card className="p-4 text-center">
+              <p className="text-destructive">Failed to load opportunities</p>
+              <p className="text-sm text-muted-foreground mt-1">{opportunitiesError}</p>
+            </Card>
+          ) : opportunities.length === 0 ? (
             <Card className="p-4 text-center">
               <p className="text-muted-foreground">No opportunities available</p>
             </Card>
           ) : (
-            enhancedOpportunities.slice(0, 5).map((opportunity) => (
+            opportunities.slice(0, 5).map((opportunity) => (
               <EnhancedOpportunityCard
                 key={`${opportunity.protocol}-${opportunity.token.symbol}`}
                 opportunity={opportunity}

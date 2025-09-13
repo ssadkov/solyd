@@ -11,6 +11,8 @@ import { WithdrawModal } from './withdraw-modal'
 import { SuccessMessage } from './success-message'
 import { useDeposit } from '@/hooks/use-deposit'
 import { useWithdraw } from '@/hooks/use-withdraw'
+import { useWallet } from '@solana/wallet-adapter-react'
+import { useWalletModal } from '@solana/wallet-adapter-react-ui'
 
 interface EnhancedOpportunity {
   token: {
@@ -53,6 +55,8 @@ export function EnhancedOpportunityCard({
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
   const [lastDepositAmount, setLastDepositAmount] = useState('')
   
+  const { connected } = useWallet()
+  const { setVisible } = useWalletModal()
   const { deposit, isLoading: isDepositLoading, error: depositError } = useDeposit()
   const { withdraw, isLoading: isWithdrawLoading, error: withdrawError } = useWithdraw()
   const { userPosition } = opportunity
@@ -203,6 +207,14 @@ export function EnhancedOpportunityCard({
               variant="outline"
             >
               Coming Soon
+            </Button>
+          ) : !connected ? (
+            <Button 
+              className="w-full" 
+              onClick={() => setVisible(true)}
+              variant="outline"
+            >
+              Connect Wallet to Start
             </Button>
           ) : hasPosition ? (
             <>
