@@ -141,15 +141,21 @@ export function EnhancedOpportunityCard({
         {/* Header */}
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-3">
-            {opportunity.token.logo && (
+            {opportunity.token.logo ? (
               <img 
                 src={opportunity.token.logo} 
                 alt={opportunity.token.symbol}
                 className="w-8 h-8 rounded-full"
                 onError={(e) => {
-                  e.currentTarget.style.display = 'none'
+                  console.log('Failed to load token icon for:', opportunity.token.symbol)
+                  // Fallback to default token icon
+                  e.currentTarget.src = 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png'
                 }}
               />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold">
+                {opportunity.token.symbol.charAt(0)}
+              </div>
             )}
             <div>
               <h3 className="text-lg font-semibold">{opportunity.token.symbol}</h3>

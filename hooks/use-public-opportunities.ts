@@ -40,10 +40,13 @@ export function usePublicOpportunities(): UsePublicOpportunitiesReturn {
       const pools: AggregatorData[] = result.data
 
       // Преобразуем в публичные возможности (без пользовательских позиций)
-      const publicOpportunities: PublicOpportunity[] = pools.map(pool => ({
-        ...pool,
-        userPosition: undefined
-      }))
+      const publicOpportunities: PublicOpportunity[] = pools.map(pool => {
+        
+        return {
+          ...pool,
+          userPosition: undefined
+        }
+      })
 
       setOpportunities(publicOpportunities)
     } catch (err) {

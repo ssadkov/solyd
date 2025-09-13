@@ -96,15 +96,19 @@ export function DepositModal({
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            {opportunity.token.logo && (
+            {opportunity.token.logo ? (
               <img 
                 src={opportunity.token.logo} 
                 alt={opportunity.token.symbol}
                 className="w-6 h-6 rounded-full"
                 onError={(e) => {
-                  e.currentTarget.style.display = 'none'
+                  e.currentTarget.src = 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png'
                 }}
               />
+            ) : (
+              <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-semibold">
+                {opportunity.token.symbol.charAt(0)}
+              </div>
             )}
             {isFirstDeposit ? 'Deposit to' : 'Add More to'} {opportunity.token.symbol}
           </DialogTitle>
@@ -115,15 +119,19 @@ export function DepositModal({
           <div className="bg-muted/50 rounded-lg p-4">
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-3">
-                {opportunity.token.logo && (
+                {opportunity.token.logo ? (
                   <img 
                     src={opportunity.token.logo} 
                     alt={opportunity.token.symbol}
                     className="w-8 h-8 rounded-full"
                     onError={(e) => {
-                      e.currentTarget.style.display = 'none'
+                      e.currentTarget.src = 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png'
                     }}
                   />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-semibold">
+                    {opportunity.token.symbol.charAt(0)}
+                  </div>
                 )}
                 <div>
                   <h3 className="font-semibold">{opportunity.token.symbol}</h3>
