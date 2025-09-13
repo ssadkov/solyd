@@ -14,6 +14,7 @@ import { useWithdraw } from '@/hooks/use-withdraw'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { useWalletModal } from '@solana/wallet-adapter-react-ui'
 
+
 interface EnhancedOpportunity {
   token: {
     symbol: string

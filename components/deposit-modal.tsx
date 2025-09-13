@@ -10,6 +10,7 @@ import { Loader2, TrendingUp, AlertCircle, CheckCircle, Wallet } from 'lucide-re
 import { formatCurrency } from '@/lib/utils'
 import { useWalletContext } from '@/contexts/wallet-context'
 
+
 interface EnhancedOpportunity {
   token: {
     symbol: string

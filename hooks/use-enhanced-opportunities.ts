@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { AggregatorData } from '@/types/aggregator'
 import { UserPosition } from '@/types/protocol'
+import { JupiterTokenService, JupiterTokenData } from '@/services/jupiter-token.service'
 
 interface EnhancedOpportunity extends AggregatorData {
   userPosition?: {
@@ -23,6 +24,8 @@ export function useEnhancedOpportunities(walletAddress: string | undefined): Use
   const [opportunities, setOpportunities] = useState<EnhancedOpportunity[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [tokenData, setTokenData] = useState<JupiterTokenData[]>([])
+  const [isLoadingTokens, setIsLoadingTokens] = useState(false)
 
   const fetchData = useCallback(async () => {
     if (!walletAddress) {
@@ -54,15 +57,37 @@ export function useEnhancedOpportunities(walletAddress: string | undefined): Use
       const pools: AggregatorData[] = poolsData.data
       const positions: UserPosition[] = positionsData.data
 
-      // Объединяем данные
+      // Загружаем данные о токенах через Jupiter API
+      setIsLoadingTokens(true)
+      let jupiterTokenData: JupiterTokenData[] = []
+      try {
+        const tokenAddresses = pools.map(pool => pool.token.address)
+        jupiterTokenData = await JupiterTokenService.getTokens(tokenAddresses)
+        setTokenData(jupiterTokenData)
+      } catch (tokenError) {
+        console.error('Failed to fetch token data:', tokenError)
+        setTokenData([])
+      } finally {
+        setIsLoadingTokens(false)
+      }
+
+      // Объединяем данные с информацией о токенах
       const enhancedOpportunities: EnhancedOpportunity[] = pools.map(pool => {
         // Ищем соответствующую позицию пользователя
         const userPosition = positions.find(position => 
           position.tokenAddress.toLowerCase() === pool.token.address.toLowerCase()
         )
 
+        // Получаем данные о токене от Jupiter API (используем свежие данные)
+        const tokenInfo = jupiterTokenData.find((token: JupiterTokenData) => token.id === pool.token.address)
+
         return {
           ...pool,
+          token: {
+            ...pool.token,
+            // Используем иконку от Jupiter API, если доступна, иначе fallback
+            logo: tokenInfo?.icon || pool.token.logo || 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png'
+          },
           userPosition: userPosition ? {
             hasPosition: true,
             investedAmount: userPosition.totalValue,

@@ -12,6 +12,48 @@ const nextConfig: NextConfig = {
         port: '',
         pathname: '/coins/images/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'raw.githubusercontent.com',
+        port: '',
+        pathname: '/solana-labs/token-list/main/assets/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'static.coinpaprika.com',
+        port: '',
+        pathname: '/coin-images/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'assets.coingecko.com',
+        port: '',
+        pathname: '/coins/images/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'cryptologos.cc',
+        port: '',
+        pathname: '/logos/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 's2.coinmarketcap.com',
+        port: '',
+        pathname: '/static/img/coins/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'jup.ag',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.jup.ag',
+        port: '',
+        pathname: '/**',
+      },
     ],
   },
   // Оптимизация для Vercel
