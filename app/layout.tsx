@@ -26,6 +26,10 @@ export const metadata: Metadata = {
     address: false,
     telephone: false,
   },
+  icons: {
+    icon: "/icon.png",
+    apple: "/apple-touch-icon.png",
+  },
   manifest: "/site.webmanifest",
   openGraph: {
     type: "website",
