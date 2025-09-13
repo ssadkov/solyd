@@ -8,6 +8,7 @@ import { useWalletContext } from '@/contexts/wallet-context';
 import { SendAssetModal } from './send-asset-modal';
 import { useState, useEffect } from 'react';
 import { JupiterTokenService, JupiterTokenData } from '@/services/jupiter-token.service';
+import { JupiterPriceService, JupiterPriceData } from '@/services/jupiter-price.service';
 
 interface WalletAssetsProps {
   address: string;
@@ -21,6 +22,7 @@ export function WalletAssets({ address }: WalletAssetsProps) {
   const [selectedAsset, setSelectedAsset] = useState<any>(null);
   const [tokenData, setTokenData] = useState<JupiterTokenData[]>([]);
   const [isLoadingTokens, setIsLoadingTokens] = useState(false);
+  const [solPrice, setSolPrice] = useState<number | null>(null);
 
   const copyMintAddress = async (mint: string) => {
     await navigator.clipboard.writeText(mint);
@@ -41,15 +43,11 @@ export function WalletAssets({ address }: WalletAssetsProps) {
   // Получаем данные о токенах от Jupiter API
   useEffect(() => {
     const fetchTokenData = async () => {
-      if (tokens.length === 0) {
-        setTokenData([]);
-        return;
-      }
-
+      // Всегда загружаем данные, даже если нет токенов (для SOL)
       setIsLoadingTokens(true);
       try {
         const allMints = [
-          'So11111111111111111111111111111111111111112', // SOL
+          'So11111111111111111111111111111111111111112', // SOL - всегда добавляем
           ...tokens.map(token => token.mint)
         ];
         
@@ -66,9 +64,43 @@ export function WalletAssets({ address }: WalletAssetsProps) {
     fetchTokenData();
   }, [tokens]);
 
+  // Отдельно загружаем цену SOL если она не загрузилась через основной API
+  useEffect(() => {
+    const fetchSolPrice = async () => {
+      if (sol > 0 && !solPrice) {
+        try {
+          const priceData = await JupiterPriceService.getPrice('So11111111111111111111111111111111111111112');
+          if (priceData) {
+            setSolPrice(priceData.usdPrice);
+          }
+        } catch (error) {
+          console.error('Failed to fetch SOL price:', error);
+        }
+      }
+    };
+
+    fetchSolPrice();
+  }, [sol, solPrice]);
+
   // Функция для получения данных о токене
   const getTokenInfo = (mint: string): JupiterTokenData | null => {
-    return tokenData.find(token => token.id === mint) || null;
+    const tokenInfo = tokenData.find(token => token.id === mint);
+    
+    // Fallback для SOL если данные не загрузились
+    if (mint === 'So11111111111111111111111111111111111111112' && !tokenInfo) {
+      return {
+        id: 'So11111111111111111111111111111111111111112',
+        name: 'Solana',
+        symbol: 'SOL',
+        icon: 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png',
+        decimals: 9,
+        usdPrice: 0, // Будет загружено отдельно
+        priceBlockId: 0,
+        isVerified: true,
+      };
+    }
+    
+    return tokenInfo || null;
   };
 
   if (error) {
@@ -124,17 +156,18 @@ export function WalletAssets({ address }: WalletAssetsProps) {
     // Add SOL only if balance > 0
     ...(sol > 0 ? (() => {
       const solTokenInfo = getTokenInfo('So11111111111111111111111111111111111111112');
-      const usdValue = solTokenInfo ? sol * solTokenInfo.usdPrice : undefined;
+      const price = solTokenInfo?.usdPrice || solPrice || 0;
+      const usdValue = price > 0 ? sol * price : undefined;
       return [{
         symbol: 'SOL',
         balance: sol.toFixed(4),
         value: usdValue ? `$${usdValue.toFixed(2)}` : `${sol.toFixed(4)} SOL`,
         mint: 'So11111111111111111111111111111111111111112',
-        logo: solTokenInfo?.icon,
+        logo: solTokenInfo?.icon || 'https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png',
         decimals: 9,
-        usdPrice: solTokenInfo?.usdPrice,
+        usdPrice: price,
         priceChange24h: solTokenInfo?.stats24h?.priceChange,
-        isVerified: solTokenInfo?.isVerified,
+        isVerified: solTokenInfo?.isVerified || true,
         usdValue: usdValue || 0, // Добавляем для сортировки
       }];
     })() : []),
