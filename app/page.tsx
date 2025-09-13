@@ -70,14 +70,13 @@ export default function Home() {
     )
   }
 
-  // Mobile layout
-  if (isMobile) {
-    return <MobileLayout />
-  }
-
-  // Desktop layout
   return (
     <WalletProvider>
+      {/* Mobile layout */}
+      {isMobile ? (
+        <MobileLayout />
+      ) : (
+        /* Desktop layout */
       <SidebarProvider
         style={
           {
@@ -195,6 +194,7 @@ export default function Home() {
           </div>
         </SidebarInset>
       </SidebarProvider>
+      )}
       
       {/* Swap Modal */}
       <SwapModal 
