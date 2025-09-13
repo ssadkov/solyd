@@ -2,25 +2,18 @@ import { useState } from 'react'
 import { useWallet } from '@solana/wallet-adapter-react'
 import { Connection, PublicKey, Transaction } from '@solana/web3.js'
 
-interface UseDepositReturn {
-  deposit: (asset: string, amount: string) => Promise<string>
+interface UseWithdrawReturn {
+  withdraw: (asset: string, amount: string) => Promise<string>
   isLoading: boolean
   error: string | null
 }
 
-export function useDeposit(): UseDepositReturn {
+export function useWithdraw(): UseWithdrawReturn {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const { publicKey, signTransaction } = useWallet()
 
-  const deposit = async (asset: string, amount: string): Promise<string> => {
-    if (!publicKey || !signTransaction) {
-      throw new Error('Wallet not connected')
-    }
-
-    setIsLoading(true)
-    setError(null)
-
+  const executeWithdraw = async (asset: string, amount: string, retryCount = 0): Promise<string> => {
     const connection = new Connection(
       process.env.NEXT_PUBLIC_SOLANA_RPC_URL || 'https://api.mainnet-beta.solana.com'
     )
@@ -30,7 +23,7 @@ export function useDeposit(): UseDepositReturn {
       const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash('confirmed')
       
       // Step 2: Get transaction from our API
-      const response = await fetch('/api/jupiter/deposit', {
+      const response = await fetch('/api/jupiter/withdraw', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -45,7 +38,7 @@ export function useDeposit(): UseDepositReturn {
       const data = await response.json()
 
       if (!data.success) {
-        throw new Error(data.error || 'Failed to create deposit transaction')
+        throw new Error(data.error || 'Failed to create withdraw transaction')
       }
 
       // Step 3: Deserialize transaction
@@ -91,10 +84,38 @@ export function useDeposit(): UseDepositReturn {
       return signature
 
     } catch (err) {
-      console.error('Deposit error:', err)
+      // Retry logic for specific errors
+      if (retryCount < 2 && err instanceof Error) {
+        if (err.message.includes('Blockhash not found') || 
+            err.message.includes('expired') ||
+            err.message.includes('Transaction simulation failed')) {
+          console.log(`Retrying withdraw transaction (attempt ${retryCount + 1}/3)`)
+          await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1 second
+          return executeWithdraw(asset, amount, retryCount + 1)
+        }
+      }
+      
+      throw err
+    }
+  }
+
+  const withdraw = async (asset: string, amount: string): Promise<string> => {
+    if (!publicKey || !signTransaction) {
+      throw new Error('Wallet not connected')
+    }
+
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      const signature = await executeWithdraw(asset, amount)
+      return signature
+
+    } catch (err) {
+      console.error('Withdraw error:', err)
       
       // Enhanced error handling for specific Solana errors
-      let errorMessage = 'Deposit failed'
+      let errorMessage = 'Withdraw failed'
       
       if (err instanceof Error) {
         if (err.message.includes('Blockhash not found') || err.message.includes('expired')) {
@@ -117,5 +138,5 @@ export function useDeposit(): UseDepositReturn {
     }
   }
 
-  return { deposit, isLoading, error }
+  return { withdraw, isLoading, error }
 }

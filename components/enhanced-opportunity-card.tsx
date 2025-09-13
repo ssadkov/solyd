@@ -10,6 +10,7 @@ import { DepositModal } from './deposit-modal'
 import { WithdrawModal } from './withdraw-modal'
 import { SuccessMessage } from './success-message'
 import { useDeposit } from '@/hooks/use-deposit'
+import { useWithdraw } from '@/hooks/use-withdraw'
 
 interface EnhancedOpportunity {
   token: {
@@ -50,7 +51,8 @@ export function EnhancedOpportunityCard({
   const [isSuccessModalOpen, setIsSuccessModalOpen] = useState(false)
   const [lastDepositAmount, setLastDepositAmount] = useState('')
   
-  const { deposit, isLoading, error } = useDeposit()
+  const { deposit, isLoading: isDepositLoading, error: depositError } = useDeposit()
+  const { withdraw, isLoading: isWithdrawLoading, error: withdrawError } = useWithdraw()
   const { userPosition } = opportunity
   const hasPosition = userPosition?.hasPosition || false
 
@@ -85,11 +87,14 @@ export function EnhancedOpportunityCard({
 
   const handleWithdraw = async (amount: string) => {
     try {
-      // TODO: Implement withdraw logic
-      console.log('Withdrawing:', amount, 'from', opportunity.token.symbol)
+      // Convert amount to lamports (assuming 6 decimals for most tokens)
+      const decimals = opportunity.token.decimals || 6
+      const amountInLamports = Math.floor(parseFloat(amount) * Math.pow(10, decimals)).toString()
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 2000))
+      // Execute withdraw
+      const signature = await withdraw(opportunity.token.address, amountInLamports)
+      
+      console.log('Withdraw successful:', signature)
       
       // Store withdraw amount and show success message
       setLastDepositAmount(`-${amount}`) // Negative to indicate withdrawal
@@ -234,8 +239,8 @@ export function EnhancedOpportunityCard({
         onClose={() => setIsDepositModalOpen(false)}
         opportunity={opportunity}
         onDeposit={handleDeposit}
-        isLoading={isLoading}
-        error={error}
+        isLoading={isDepositLoading}
+        error={depositError}
       />
 
       {/* Withdraw Modal */}
@@ -244,8 +249,8 @@ export function EnhancedOpportunityCard({
         onClose={() => setIsWithdrawModalOpen(false)}
         opportunity={opportunity}
         onWithdraw={handleWithdraw}
-        isLoading={isLoading}
-        error={error}
+        isLoading={isWithdrawLoading}
+        error={withdrawError}
       />
 
       {/* Success Message */}
