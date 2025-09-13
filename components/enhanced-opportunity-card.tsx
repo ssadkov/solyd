@@ -38,7 +38,7 @@ interface EnhancedOpportunityCardProps {
   onAddMore?: (opportunity: EnhancedOpportunity) => void
   onWithdraw?: (opportunity: EnhancedOpportunity) => void
   onStartEarning?: (opportunity: EnhancedOpportunity) => void
-  onSwapAndDeposit?: () => void
+  onSwapAndDeposit?: (opportunity: EnhancedOpportunity) => void
 }
 
 export function EnhancedOpportunityCard({ 
@@ -241,7 +241,7 @@ export function EnhancedOpportunityCard({
         onClose={() => setIsDepositModalOpen(false)}
         opportunity={opportunity}
         onDeposit={handleDeposit}
-        onSwapAndDeposit={onSwapAndDeposit}
+        onSwapAndDeposit={() => onSwapAndDeposit?.(opportunity)}
         isLoading={isDepositLoading}
         error={depositError}
       />

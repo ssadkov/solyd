@@ -24,6 +24,14 @@ export default function Home() {
   const { publicKey } = useWallet()
   const walletAddress = publicKey?.toString()
   const [isSwapModalOpen, setIsSwapModalOpen] = useState(false)
+  const [presetTokenOut, setPresetTokenOut] = useState<{
+    symbol: string
+    address: string
+    decimals: number
+    logo: string
+    price: number
+    apy?: number
+  } | undefined>(undefined)
   
   // Используем новый хук для получения объединенных данных
   const { 
@@ -80,7 +88,10 @@ export default function Home() {
       >
         <DefiSidebar 
           variant="inset" 
-          onSwapClick={() => setIsSwapModalOpen(true)}
+          onSwapClick={() => {
+            setPresetTokenOut(undefined)
+            setIsSwapModalOpen(true)
+          }}
         />
         <SidebarInset>
           <div className="flex h-screen">
@@ -162,7 +173,17 @@ export default function Home() {
                               console.log('Withdraw clicked for:', opp.token.symbol)
                               // TODO: Implement withdraw functionality
                             }}
-                            onSwapAndDeposit={() => setIsSwapModalOpen(true)}
+                            onSwapAndDeposit={(opportunity) => {
+                              setPresetTokenOut({
+                                symbol: opportunity.token.symbol,
+                                address: opportunity.token.address,
+                                decimals: opportunity.token.decimals,
+                                logo: opportunity.token.logo,
+                                price: opportunity.token.price,
+                                apy: opportunity.apy
+                              })
+                              setIsSwapModalOpen(true)
+                            }}
                           />
                         ))
                       )}
@@ -178,7 +199,11 @@ export default function Home() {
       {/* Swap Modal */}
       <SwapModal 
         isOpen={isSwapModalOpen}
-        onClose={() => setIsSwapModalOpen(false)}
+        onClose={() => {
+          setIsSwapModalOpen(false)
+          setPresetTokenOut(undefined)
+        }}
+        presetTokenOut={presetTokenOut}
       />
     </WalletProvider>
   )

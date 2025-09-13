@@ -36,7 +36,7 @@ interface DepositModalProps {
   onClose: () => void
   opportunity: EnhancedOpportunity | null
   onDeposit: (amount: string) => Promise<void>
-  onSwapAndDeposit?: () => void
+  onSwapAndDeposit?: (opportunity: EnhancedOpportunity) => void
   isLoading?: boolean
   error?: string | null
 }
@@ -184,11 +184,11 @@ export function DepositModal({
                   You don't have any {opportunity.token.symbol} tokens in your wallet. 
                   You can swap your existing tokens and start earning.
                 </div>
-                {onSwapAndDeposit && (
+                {onSwapAndDeposit && opportunity && (
                   <Button 
                     variant="outline" 
                     size="sm" 
-                    onClick={onSwapAndDeposit}
+                    onClick={() => onSwapAndDeposit(opportunity)}
                     className="mt-2"
                   >
                     Swap and Deposit

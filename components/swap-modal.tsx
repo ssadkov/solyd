@@ -20,6 +20,14 @@ import { JupiterPriceService } from '@/services/jupiter-price.service'
 interface SwapModalProps {
   isOpen: boolean
   onClose: () => void
+  presetTokenOut?: {
+    symbol: string
+    address: string
+    decimals: number
+    logo: string
+    price: number
+    apy?: number
+  }
 }
 
 interface TokenOption {
@@ -33,7 +41,7 @@ interface TokenOption {
   apy?: number
 }
 
-export function SwapModal({ isOpen, onClose }: SwapModalProps) {
+export function SwapModal({ isOpen, onClose, presetTokenOut }: SwapModalProps) {
   const [amount, setAmount] = useState('')
   const [selectedTokenIn, setSelectedTokenIn] = useState<TokenOption | null>(null)
   const [selectedTokenOut, setSelectedTokenOut] = useState<TokenOption | null>(null)
@@ -228,13 +236,28 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
       )
       setSelectedTokenIn(bestTokenIn)
 
-      // Токен out с наибольшим APY
-      const bestTokenOut = tokenOutOptions.reduce((best, current) => 
-        (current.apy || 0) > (best.apy || 0) ? current : best
-      )
-      setSelectedTokenOut(bestTokenOut)
+      // Если есть предустановленный токен out, используем его
+      if (presetTokenOut) {
+        const presetToken: TokenOption = {
+          symbol: presetTokenOut.symbol,
+          address: presetTokenOut.address,
+          decimals: presetTokenOut.decimals,
+          logo: presetTokenOut.logo,
+          price: presetTokenOut.price,
+          balance: 0,
+          usdValue: 0,
+          apy: presetTokenOut.apy,
+        }
+        setSelectedTokenOut(presetToken)
+      } else {
+        // Токен out с наибольшим APY
+        const bestTokenOut = tokenOutOptions.reduce((best, current) => 
+          (current.apy || 0) > (best.apy || 0) ? current : best
+        )
+        setSelectedTokenOut(bestTokenOut)
+      }
     }
-  }, [isOpen, tokenInOptions, tokenOutOptions, selectedTokenIn, selectedTokenOut])
+  }, [isOpen, tokenInOptions, tokenOutOptions, selectedTokenIn, selectedTokenOut, presetTokenOut])
 
   // Сбрасываем состояния при изменении параметров
   useEffect(() => {
