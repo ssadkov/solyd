@@ -36,6 +36,8 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
   const [selectedTokenIn, setSelectedTokenIn] = useState<TokenOption | null>(null)
   const [selectedTokenOut, setSelectedTokenOut] = useState<TokenOption | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [swapStep, setSwapStep] = useState<'quote' | 'confirm' | 'executing' | 'success'>('quote')
+  const [transactionSignature, setTransactionSignature] = useState<string | null>(null)
   const [tokenData, setTokenData] = useState<JupiterTokenData[]>([])
   const [isLoadingTokens, setIsLoadingTokens] = useState(false)
   
@@ -191,25 +193,56 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
     }
   }, [isOpen, tokenInOptions, tokenOutOptions, selectedTokenIn, selectedTokenOut])
 
+  // Сбрасываем состояния при изменении параметров
+  useEffect(() => {
+    if (swapStep !== 'quote') {
+      setSwapStep('quote')
+      clearQuote()
+    }
+  }, [selectedTokenIn, selectedTokenOut, amount])
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!amount || !selectedTokenIn || !selectedTokenOut) return
 
-    setIsSubmitting(true)
-    try {
-      // Конвертируем сумму в минимальные единицы токена
-      const amountInSmallestUnit = Math.floor(parseFloat(amount) * Math.pow(10, selectedTokenIn.decimals))
+    if (swapStep === 'quote') {
+      // Получаем quote
+      setIsSubmitting(true)
+      try {
+        const amountInSmallestUnit = Math.floor(parseFloat(amount) * Math.pow(10, selectedTokenIn.decimals))
+        
+        await getQuote({
+          inputMint: selectedTokenIn.address,
+          outputMint: selectedTokenOut.address,
+          amount: amountInSmallestUnit.toString(),
+          slippageBps: 100, // 1% slippage
+        })
+        
+        setSwapStep('confirm')
+      } catch (err) {
+        console.error('Quote failed:', err)
+      } finally {
+        setIsSubmitting(false)
+      }
+    } else if (swapStep === 'confirm') {
+      // Выполняем swap (заглушка)
+      setSwapStep('executing')
+      setIsSubmitting(true)
       
-      await getQuote({
-        inputMint: selectedTokenIn.address,
-        outputMint: selectedTokenOut.address,
-        amount: amountInSmallestUnit.toString(),
-        slippageBps: 100, // 1% slippage
-      })
-    } catch (err) {
-      console.error('Quote failed:', err)
-    } finally {
-      setIsSubmitting(false)
+      try {
+        // Заглушка - имитируем выполнение swap
+        await new Promise(resolve => setTimeout(resolve, 2000))
+        
+        // Заглушка - случайная подпись транзакции
+        const mockSignature = '5' + 'x'.repeat(87)
+        setTransactionSignature(mockSignature)
+        setSwapStep('success')
+      } catch (err) {
+        console.error('Swap failed:', err)
+        setSwapStep('confirm')
+      } finally {
+        setIsSubmitting(false)
+      }
     }
   }
 
@@ -217,6 +250,8 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
     setAmount('')
     setSelectedTokenIn(null)
     setSelectedTokenOut(null)
+    setSwapStep('quote')
+    setTransactionSignature(null)
     clearQuote()
     onClose()
   }
@@ -307,15 +342,45 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
                     className="text-lg"
                   />
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={handleMax}
-                  disabled={isLoading || isSubmitting || !selectedTokenIn}
-                  className="px-3"
-                >
-                  Max
-                </Button>
+                <div className="flex gap-1">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (selectedTokenIn) {
+                        setAmount(((selectedTokenIn.balance || 0) * 0.25).toString())
+                      }
+                    }}
+                    disabled={!selectedTokenIn || isLoading || isSubmitting}
+                    className="px-2 text-xs"
+                  >
+                    25%
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      if (selectedTokenIn) {
+                        setAmount(((selectedTokenIn.balance || 0) * 0.5).toString())
+                      }
+                    }}
+                    disabled={!selectedTokenIn || isLoading || isSubmitting}
+                    className="px-2 text-xs"
+                  >
+                    50%
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleMax}
+                    disabled={!selectedTokenIn || isLoading || isSubmitting}
+                    className="px-3"
+                  >
+                    Max
+                  </Button>
+                </div>
               </div>
               {selectedTokenIn && (
                 <div className="flex items-center justify-between text-sm text-muted-foreground">
@@ -420,12 +485,21 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
                 {isSubmitting ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Getting Quote...
+                    {swapStep === 'quote' ? 'Getting Quote...' : 'Executing Swap...'}
                   </>
                 ) : (
                   <>
-                    <CheckCircle className="w-4 h-4 mr-2" />
-                    Get Quote
+                    {swapStep === 'quote' ? (
+                      <>
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Get Quote
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="w-4 h-4 mr-2" />
+                        Swap
+                      </>
+                    )}
                   </>
                 )}
               </Button>
@@ -439,6 +513,62 @@ export function SwapModal({ isOpen, onClose }: SwapModalProps) {
           </div>
         </div>
       </DialogContent>
+
+      {/* Success Modal */}
+      {swapStep === 'success' && (
+        <Dialog open={true} onOpenChange={() => {}}>
+          <DialogContent className="sm:max-w-md">
+            <div className="flex flex-col items-center text-center space-y-6 py-4">
+              {/* Success Icon */}
+              <div className="w-16 h-16 rounded-full flex items-center justify-center bg-green-100 dark:bg-green-900/30">
+                <CheckCircle className="w-10 h-10 text-green-500" />
+              </div>
+
+              {/* Main Message */}
+              <div className="space-y-2">
+                <h2 className="text-2xl font-bold text-green-600">
+                  Swap Successful!
+                </h2>
+                <p className="text-lg text-muted-foreground">
+                  <span className="font-semibold text-foreground">{amount} {selectedTokenIn?.symbol}</span>
+                  {' '}swapped for{' '}
+                  <span className="font-semibold text-foreground">
+                    {quote ? formatTokenAmount(parseInt(quote.outAmount), selectedTokenOut?.decimals || 9) : '0'} {selectedTokenOut?.symbol}
+                  </span>
+                </p>
+              </div>
+
+              {/* Transaction Link */}
+              {transactionSignature && (
+                <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 w-full">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <CheckCircle className="w-5 h-5 text-blue-600" />
+                    <span className="font-semibold text-blue-700 dark:text-blue-300">
+                      Transaction Complete
+                    </span>
+                  </div>
+                  <a
+                    href={`https://solscan.io/tx/${transactionSignature}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-blue-600 dark:text-blue-400 hover:underline break-all"
+                  >
+                    View on Solscan: {transactionSignature.slice(0, 8)}...{transactionSignature.slice(-8)}
+                  </a>
+                </div>
+              )}
+
+              {/* Close Button */}
+              <button
+                onClick={handleClose}
+                className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+              >
+                Continue
+              </button>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
     </Dialog>
   )
 }
