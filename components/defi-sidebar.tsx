@@ -11,6 +11,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { WalletConnect } from "@/components/wallet-connect"
 import { WalletAssets } from "@/components/wallet-assets"
+import { LendPositions } from "@/components/lend-positions"
 import { useWallet } from '@solana/wallet-adapter-react'
 import {
   Sidebar,
@@ -70,6 +71,13 @@ export function DefiSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) 
               Connect wallet to view assets
             </div>
           )}
+        </div>
+
+        <Separator />
+
+        {/* Lending Positions */}
+        <div className="p-4">
+          <LendPositions walletAddress={walletAddress} />
         </div>
 
       </SidebarContent>

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { protocolRegistry } from '@/services/protocol-registry'
 import { initializeProtocols } from '@/services/protocols'
 
@@ -9,14 +9,28 @@ if (!protocolsInitialized) {
   protocolsInitialized = true
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Получаем данные из всех зарегистрированных протоколов
-    const data = await protocolRegistry.getAllPools()
+    const { searchParams } = new URL(request.url)
+    const walletAddress = searchParams.get('address')
+
+    if (!walletAddress) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Wallet address is required',
+          message: 'Please provide a wallet address as query parameter',
+        },
+        { status: 400 }
+      )
+    }
+
+    // Получаем позиции пользователя из всех протоколов
+    const positions = await protocolRegistry.getUserPositions(walletAddress)
     
     return NextResponse.json({
       success: true,
-      data,
+      data: positions,
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
@@ -25,7 +39,7 @@ export async function GET() {
     return NextResponse.json(
       {
         success: false,
-        error: 'Failed to fetch aggregator data',
+        error: 'Failed to fetch user positions',
         message: error instanceof Error ? error.message : 'Unknown error',
         timestamp: new Date().toISOString(),
       },

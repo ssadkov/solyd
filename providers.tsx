@@ -6,7 +6,8 @@ import { PhantomWalletAdapter } from '@solana/wallet-adapter-phantom';
 import { SolflareWalletAdapter } from '@solana/wallet-adapter-solflare';
 import { WalletModalProvider } from '@solana/wallet-adapter-react-ui';
 import { clusterApiUrl } from '@solana/web3.js';
-import { useMemo } from 'react';
+import { useMemo, useEffect } from 'react';
+import { initializeProtocols } from '@/services/protocols';
 
 // Wallet adapter styles are imported in globals.css
 
@@ -24,6 +25,11 @@ export default function Providers({ children }: { children: React.ReactNode }) {
     ],
     []
   );
+
+  // Инициализируем протоколы при загрузке приложения
+  useEffect(() => {
+    initializeProtocols();
+  }, []);
 
   return (
     <ConnectionProvider endpoint={endpoint}>

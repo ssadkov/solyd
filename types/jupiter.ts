@@ -40,3 +40,28 @@ export interface JupiterPool {
   liquiditySupplyData: JupiterLiquiditySupplyData
   rewards: any[]
 }
+
+// Типы для пользовательских позиций Jupiter Lend
+export interface JupiterUserPosition {
+  token: JupiterPool
+  ownerAddress: string
+  shares: string
+  underlyingAssets: string
+  underlyingBalance: string
+  allowance: string
+}
+
+// Расширенный интерфейс для пользовательских позиций с дополнительными данными
+export interface JupiterUserPositionExtended {
+  token: JupiterPool
+  ownerAddress: string
+  shares: string
+  underlyingAssets: string
+  underlyingBalance: string
+  allowance: string
+  // Вычисляемые поля
+  totalValue: number
+  apy: number
+  withdrawable: string
+  isActive: boolean
+}
