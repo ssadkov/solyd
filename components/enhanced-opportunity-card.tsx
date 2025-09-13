@@ -1,10 +1,12 @@
 'use client'
 
+import { useState } from 'react'
 import { Badge } from './ui/badge'
 import { Button } from './ui/button'
 import { Card } from './ui/card'
 import { TrendingUp, Plus, Minus } from 'lucide-react'
 import { formatCurrency } from '@/lib/utils'
+import { DepositModal } from './deposit-modal'
 
 interface EnhancedOpportunity {
   token: {
@@ -40,8 +42,41 @@ export function EnhancedOpportunityCard({
   onWithdraw, 
   onStartEarning 
 }: EnhancedOpportunityCardProps) {
+  const [isDepositModalOpen, setIsDepositModalOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  
   const { userPosition } = opportunity
   const hasPosition = userPosition?.hasPosition || false
+
+  const handleDeposit = async (amount: string) => {
+    setIsLoading(true)
+    setError(null)
+    
+    try {
+      // TODO: Implement deposit logic
+      console.log('Depositing:', amount, 'to', opportunity.token.symbol)
+      
+      // Simulate API call
+      await new Promise(resolve => setTimeout(resolve, 2000))
+      
+      setIsDepositModalOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Deposit failed')
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleAddMore = () => {
+    setIsDepositModalOpen(true)
+    setError(null)
+  }
+
+  const handleStartEarning = () => {
+    setIsDepositModalOpen(true)
+    setError(null)
+  }
 
   return (
     <Card 
@@ -139,7 +174,7 @@ export function EnhancedOpportunityCard({
             <>
               <Button 
                 className="flex-1" 
-                onClick={() => onAddMore?.(opportunity)}
+                onClick={handleAddMore}
                 size="sm"
               >
                 <Plus className="w-4 h-4 mr-1" />
@@ -158,13 +193,23 @@ export function EnhancedOpportunityCard({
           ) : (
             <Button 
               className="w-full" 
-              onClick={() => onStartEarning?.(opportunity)}
+              onClick={handleStartEarning}
             >
               Start Earning
             </Button>
           )}
         </div>
       </div>
+
+      {/* Deposit Modal */}
+      <DepositModal
+        isOpen={isDepositModalOpen}
+        onClose={() => setIsDepositModalOpen(false)}
+        opportunity={opportunity}
+        onDeposit={handleDeposit}
+        isLoading={isLoading}
+        error={error}
+      />
     </Card>
   )
 }

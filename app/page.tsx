@@ -113,17 +113,9 @@ export default function Home() {
                         <EnhancedOpportunityCard
                           key={index}
                           opportunity={opportunity}
-                          onAddMore={(opp) => {
-                            console.log('Add More clicked for:', opp.token.symbol)
-                            // TODO: Implement add more functionality
-                          }}
                           onWithdraw={(opp) => {
                             console.log('Withdraw clicked for:', opp.token.symbol)
                             // TODO: Implement withdraw functionality
-                          }}
-                          onStartEarning={(opp) => {
-                            console.log('Start Earning clicked for:', opp.token.symbol)
-                            // TODO: Implement start earning functionality
                           }}
                         />
                       ))
